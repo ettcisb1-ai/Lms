@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary-color: #ff5733;
+  --primary-hover: #e04c2c;
+  --bg-color: #f7f8fa;
+  --sidebar-bg: #ffffff;
+  --card-bg: #ffffff;
+  --text-dark: #2d3748;
+  --text-muted: #718096;
+  --border-color: #e2e8f0;
+  
+  --success-color: #48bb78;
+  --success-bg: #e6ffed;
+  --danger-color: #e53e3e;
+  --danger-bg: #fff5f5;
+  --purple-color: #9f7aea;
+  --purple-bg: #faf5ff;
+  --blue-color: #4299e1;
+  --blue-bg: #ebf8ff;
+  --yellow-color: #ecc94b;
+  --yellow-bg: #fffff0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Raleway', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,237 @@
+.user-notifications-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.notifications-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.notifications-header-row h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.notifications-header-row p {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.btn-mark-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-mark-all:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Toolbar filters */
+.notifications-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filter-tabs-row {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-tab-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.filter-tab-btn:hover {
+  color: var(--primary-color);
+  border-color: rgba(255, 87, 51, 0.15);
+}
+
+.filter-tab-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 8px rgba(255, 87, 51, 0.2);
+}
+
+/* Listings stack */
+.notifications-list-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.notifications-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notification-alert-row {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.notification-alert-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+}
+
+.notification-alert-row.unread-status {
+  border-left: 4px solid var(--primary-color);
+  padding-left: 17px;
+  background-color: #fffaf9;
+}
+
+.notif-avatar-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: #f8fafc;
+}
+
+.unread-status .notif-avatar-box {
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.notif-avatar-box svg.text-orange { color: var(--primary-color); }
+.notif-avatar-box svg.text-purple { color: #9f7aea; }
+.notif-avatar-box svg.text-blue { color: #4299e1; }
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notif-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.notif-top h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.notif-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.notif-text {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Actions */
+.notif-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.action-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: none;
+  border: none;
+}
+
+.action-icon-btn:hover {
+  background-color: #f1f5f9;
+}
+
+.action-icon-btn.read:hover {
+  color: var(--success-color);
+  background-color: #ecfdf5;
+}
+
+.action-icon-btn.delete:hover {
+  color: var(--danger-color);
+  background-color: #fff5f5;
+}
+
+.read-stamp {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: #f8fafc;
+  border-radius: 4px;
+}
+
+/* Empty State */
+.empty-notifications-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px;
+  text-align: center;
+  background-color: #ffffff;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  color: #64748b;
+  gap: 12px;
+}
+
+.empty-notifications-card p {
+  font-size: 13.5px;
+}

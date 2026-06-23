@@ -1,0 +1,597 @@
+/* ── Shimmer Wave Animation ──────────────────────────────────────────────── */
+@keyframes shimmer-wave {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Base shimmer block */
+.shimmer-block {
+  background: linear-gradient(90deg, #f0f2f5 25%, #e4e7ed 50%, #f0f2f5 75%);
+  background-size: 800px 100%;
+  animation: shimmer-wave 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ── Shimmer wrapper containers ─────────────────────────────────────────── */
+.shimmer-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── Stat Card Shimmer ───────────────────────────────────────────────────── */
+.shimmer-stat-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shimmer-stat-card .shimmer-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.shimmer-stat-card .shimmer-value {
+  width: 60%;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.shimmer-stat-card .shimmer-label {
+  width: 80%;
+  height: 13px;
+  border-radius: 4px;
+}
+
+.shimmer-stat-card .shimmer-sub {
+  width: 55%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+/* ── Chart Card Shimmer ─────────────────────────────────────────────────── */
+.shimmer-chart-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shimmer-chart-card .shimmer-chart-title {
+  width: 45%;
+  height: 15px;
+  border-radius: 5px;
+}
+
+.shimmer-chart-card .shimmer-chart-sub {
+  width: 60%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.shimmer-chart-card .shimmer-chart-body {
+  width: 100%;
+  height: 200px;
+  border-radius: 10px;
+}
+
+/* ── Table Row Shimmer ───────────────────────────────────────────────────── */
+.shimmer-table-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f7f8fa;
+}
+
+.shimmer-table-row .shimmer-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.shimmer-table-row .shimmer-row-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shimmer-table-row .shimmer-row-name {
+  width: 40%;
+  height: 13px;
+  border-radius: 4px;
+}
+
+.shimmer-table-row .shimmer-row-email {
+  width: 60%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.shimmer-table-row .shimmer-badge {
+  width: 70px;
+  height: 22px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.shimmer-table-row .shimmer-pill {
+  width: 55px;
+  height: 22px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.shimmer-table-row .shimmer-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.shimmer-table-row .shimmer-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+/* ── Course Card Shimmer ─────────────────────────────────────────────────── */
+.shimmer-course-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.shimmer-course-card .shimmer-card-image {
+  width: 100%;
+  height: 160px;
+  border-radius: 0;
+}
+
+.shimmer-course-card .shimmer-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shimmer-course-card .shimmer-card-cat {
+  width: 35%;
+  height: 11px;
+  border-radius: 4px;
+}
+
+.shimmer-course-card .shimmer-card-title {
+  width: 85%;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.shimmer-course-card .shimmer-card-title-2 {
+  width: 55%;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.shimmer-course-card .shimmer-card-meta {
+  width: 60%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.65;
+}
+
+.shimmer-course-card .shimmer-card-btn {
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+/* ── Video Card Shimmer ──────────────────────────────────────────────────── */
+.shimmer-video-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.shimmer-video-card .shimmer-video-thumb {
+  width: 100%;
+  height: 170px;
+  border-radius: 0;
+}
+
+.shimmer-video-card .shimmer-video-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.shimmer-video-card .shimmer-video-title {
+  width: 80%;
+  height: 15px;
+  border-radius: 5px;
+}
+
+.shimmer-video-card .shimmer-video-meta {
+  width: 50%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.shimmer-video-card .shimmer-video-course {
+  width: 65%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+/* ── Notification Row Shimmer ───────────────────────────────────────────── */
+.shimmer-notification-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.03);
+}
+
+.shimmer-notification-row .shimmer-notif-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.shimmer-notification-row .shimmer-notif-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.shimmer-notification-row .shimmer-notif-title {
+  width: 45%;
+  height: 13px;
+  border-radius: 4px;
+}
+
+.shimmer-notification-row .shimmer-notif-text {
+  width: 80%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.65;
+}
+
+.shimmer-notification-row .shimmer-notif-time {
+  width: 60px;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* ── Plan Card Shimmer ───────────────────────────────────────────────────── */
+.shimmer-plan-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shimmer-plan-card .shimmer-plan-name {
+  width: 50%;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.shimmer-plan-card .shimmer-plan-desc {
+  width: 75%;
+  height: 12px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.shimmer-plan-card .shimmer-plan-price {
+  width: 40%;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.shimmer-plan-card .shimmer-plan-feat {
+  width: 70%;
+  height: 11px;
+  border-radius: 4px;
+  opacity: 0.55;
+}
+
+.shimmer-plan-card .shimmer-plan-btn {
+  width: 100%;
+  height: 38px;
+  border-radius: 10px;
+  margin-top: 4px;
+}
+
+/* ── Banner Shimmer ─────────────────────────────────────────────────────── */
+.shimmer-banner {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 32px;
+  border: 1px solid #edf2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 130px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.shimmer-banner .shimmer-banner-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.shimmer-banner .shimmer-banner-title {
+  width: 65%;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.shimmer-banner .shimmer-banner-sub {
+  width: 80%;
+  height: 13px;
+  border-radius: 4px;
+  opacity: 0.65;
+}
+
+.shimmer-banner .shimmer-banner-btn {
+  width: 140px;
+  height: 36px;
+  border-radius: 20px;
+}
+
+.shimmer-banner .shimmer-banner-right {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: 24px;
+}
+
+/* ── Form / Settings Shimmer ────────────────────────────────────────────── */
+.shimmer-form-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.shimmer-form-card .shimmer-form-title {
+  width: 40%;
+  height: 18px;
+  border-radius: 6px;
+}
+
+.shimmer-form-card .shimmer-form-label {
+  width: 30%;
+  height: 12px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.shimmer-form-card .shimmer-form-input {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+}
+
+/* ── Grid helpers ────────────────────────────────────────────────────────── */
+.shimmer-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.shimmer-charts-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.shimmer-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.shimmer-videos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.shimmer-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.shimmer-notifications-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shimmer-table-wrapper {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.shimmer-table-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f2f5;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.shimmer-table-header .shimmer-th {
+  height: 13px;
+  border-radius: 4px;
+}
+
+/* ── Category Row Shimmer ────────────────────────────────────────────────── */
+.shimmer-category-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f7f8fa;
+}
+
+.shimmer-category-row .shimmer-cat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.shimmer-category-row .shimmer-cat-lines {
+  flex: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shimmer-category-row .shimmer-cat-name {
+  width: 45%;
+  height: 13px;
+  border-radius: 4px;
+}
+
+.shimmer-category-row .shimmer-cat-slug {
+  width: 30%;
+  height: 10px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.shimmer-category-row .shimmer-cat-desc {
+  flex: 2;
+  height: 12px;
+  border-radius: 4px;
+  opacity: 0.55;
+}
+
+.shimmer-category-row .shimmer-cat-badge {
+  width: 90px;
+  height: 22px;
+  border-radius: 20px;
+}
+
+.shimmer-category-row .shimmer-cat-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.shimmer-category-row .shimmer-cat-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+/* ── Activity Section Shimmer ───────────────────────────────────────────── */
+.shimmer-activity-section {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+.shimmer-activity-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #edf2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shimmer-activity-header .shimmer-section-title {
+  width: 160px;
+  height: 16px;
+  border-radius: 5px;
+}
+
+.shimmer-activity-header .shimmer-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.shimmer-activity-header .shimmer-tab-btn {
+  width: 90px;
+  height: 28px;
+  border-radius: 20px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .shimmer-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .shimmer-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .shimmer-charts-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .shimmer-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shimmer-courses-grid,
+  .shimmer-videos-grid,
+  .shimmer-plans-grid {
+    grid-template-columns: 1fr;
+  }
+}

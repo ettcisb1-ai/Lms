@@ -1,0 +1,46 @@
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-color);
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease;
+  position: relative;
+}
+
+.admin-layout.collapsed .admin-main {
+  margin-left: 80px;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 36px;
+  left: -12px;
+  width: 24px;
+  height: 24px;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  z-index: 20;
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.admin-content {
+  padding: 24px 32px 32px 32px;
+}

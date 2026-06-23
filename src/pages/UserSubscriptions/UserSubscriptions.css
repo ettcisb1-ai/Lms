@@ -1,0 +1,953 @@
+.user-subscriptions-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* ── Free Mode Alert Banner ────────────────────────── */
+.free-mode-banner {
+  background-color: #ecfdf5;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #047857;
+  padding: 16px 20px;
+  border-radius: 12px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.free-mode-banner strong {
+  font-size: 14px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.free-mode-banner p {
+  font-size: 13px;
+  color: #065f46;
+  line-height: 1.5;
+}
+
+/* ── Billing Step: Plans ───────────────────────────── */
+.billing-step-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.billing-heading {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.billing-heading h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.billing-heading p {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Currency selector row */
+.currency-selector-row {
+  display: flex;
+  gap: 6px;
+  background-color: #f1f5f9;
+  padding: 4px;
+  border-radius: 24px;
+  margin-top: 16px;
+}
+
+.currency-pill {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #475569;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.currency-pill.active {
+  background-color: #ffffff;
+  color: var(--primary-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Plans Grid */
+.student-plans-grid {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: stretch;
+  margin: 0 auto;
+  max-width: 1100px;
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .student-plans-grid {
+    flex-wrap: nowrap;
+  }
+}
+
+.student-plan-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  width: 100%;
+  max-width: 320px;
+  flex: 1 1 270px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.student-plan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
+}
+
+.student-plan-card.recommended {
+  border-color: var(--primary-color);
+  background-color: #ffffff;
+  box-shadow: 0 10px 25px rgba(255, 87, 51, 0.12);
+}
+
+.student-plan-card.recommended:hover {
+  box-shadow: 0 20px 40px rgba(255, 87, 51, 0.22);
+}
+
+.recommended-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, #ff7a59 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.plan-card-top h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.plan-desc {
+  font-size: 12.5px;
+  color: #64748b;
+  margin-top: 8px;
+  line-height: 1.5;
+  height: 56px;
+}
+
+.plan-price-tier {
+  margin: 24px 0;
+  display: flex;
+  align-items: baseline;
+  color: #0f172a;
+}
+
+.price-symbol {
+  font-size: 20px;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.price-bold {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.price-period {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.plan-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 24px;
+}
+
+.feat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.feat-item svg {
+  color: var(--success-color);
+}
+
+.plan-card-footer {
+  margin-top: auto;
+}
+
+.btn-select-plan {
+  width: 100%;
+  background-color: #f8fafc;
+  border: 1px solid var(--border-color);
+  color: #334155;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.student-plan-card.recommended .btn-select-plan {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 10px rgba(255, 87, 51, 0.2);
+}
+
+.btn-select-plan:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(255, 87, 51, 0.25);
+}
+
+.active-plan-badge {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px dashed rgba(5, 150, 105, 0.3);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+/* ── Billing Step: Checkout ────────────────────────── */
+.billing-step-checkout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.billing-step-checkout .back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  align-self: flex-start;
+  cursor: pointer;
+}
+
+.billing-step-checkout .back-btn:hover {
+  color: var(--primary-color);
+}
+
+.checkout-workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Left: Payment Info */
+.checkout-payment-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.checkout-payment-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.checkout-sec-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: -16px;
+}
+
+/* Animated Luxury Credit Card mockup */
+.card-mockup-widget {
+  width: 320px;
+  max-width: 100%;
+  aspect-ratio: 1.586/1;
+  /* Credit Card standard */
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 12px;
+  padding: 24px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-mock-glow {
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(255, 87, 51, 0.2) 0%, rgba(255, 87, 51, 0) 70%);
+  border-radius: 50%;
+}
+
+.card-mock-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+}
+
+.card-mock-type {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #94a3b8;
+}
+
+.card-mock-number {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  font-family: monospace;
+  margin: 20px 0;
+  z-index: 2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.card-mock-bottom {
+  display: flex;
+  justify-content: space-between;
+  z-index: 2;
+}
+
+.card-mock-bottom .lbl-tiny {
+  display: block;
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.card-mock-bottom .lbl-val {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Payment Form */
+.payment-form-element {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.payment-form-element .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.payment-form-element label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.payment-form-element input {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 13.5px;
+  background-color: #f8fafc;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  color: #334155;
+}
+
+.payment-form-element input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background-color: #ffffff;
+}
+
+.form-double-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.btn-purchase-submit {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(255, 87, 51, 0.3);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.btn-purchase-submit:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-purchase-submit.loading {
+  background-color: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Right: Checkout summary info */
+.order-summary-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.order-summary-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-plan-details {
+  background-color: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.summary-plan-details h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summary-plan-details p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.summary-price-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.summary-price-breakdown .price-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #475569;
+}
+
+.summary-price-breakdown .discount-item {
+  color: #059669;
+  font-weight: 600;
+}
+
+.price-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  padding-top: 4px;
+}
+
+/* Coupon validations */
+.coupon-code-form-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coupon-code-form {
+  display: flex;
+  gap: 8px;
+}
+
+.coupon-code-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.coupon-code-form input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.coupon-code-form button {
+  background-color: #0f172a;
+  color: white;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.coupon-code-form button:hover {
+  background-color: #1e293b;
+}
+
+.applied-coupon-pill {
+  background-color: #ecfdf5;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #065f46;
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.applied-coupon-pill .coupon-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.remove-coupon-btn {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.coupon-err-msg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.summary-trust-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 500;
+  background-color: #faf5ff;
+  border: 1px solid rgba(159, 122, 234, 0.15);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.summary-trust-info svg {
+  color: #9f7aea;
+}
+
+/* ── Billing Step: Success Receipt ────────────────── */
+.success-receipt-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 540px;
+  margin: 0 auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.receipt-badge-circle {
+  width: 64px;
+  height: 64px;
+  background-color: #ecfdf5;
+  color: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.success-receipt-card h2 {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.success-receipt-card p {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: -8px;
+}
+
+/* Receipt Details */
+.digital-receipt-element {
+  width: 100%;
+  background-color: #fafafa;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.receipt-header {
+  border-bottom: 1px dashed #cbd5e1;
+  padding-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receipt-header h3 {
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+  letter-spacing: 0.5px;
+}
+
+.receipt-txn {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.receipt-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.receipt-row span {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.receipt-row strong {
+  color: #0f172a;
+}
+
+.text-success-stamp {
+  color: #059669 !important;
+  font-weight: 800;
+}
+
+.receipt-security-footer {
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 12px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: monospace;
+}
+
+.btn-classroom-resume {
+  width: 100%;
+  background-color: var(--primary-color);
+  color: white;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(255, 87, 51, 0.3);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-classroom-resume:hover {
+  background-color: var(--primary-hover);
+  transform: scale(1.01);
+}
+
+/* Animations */
+.animate-view {
+  animation: viewFadeIn 0.35s ease-out;
+}
+
+@keyframes viewFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .checkout-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Loading / spinner ──────────────────────────────────────────────────────── */
+.sub-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.sub-spin {
+  animation: sub-spin 0.9s linear infinite;
+}
+
+@keyframes sub-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Alert toast ─────────────────────────────────────────────────────────────── */
+.user-sub-toast {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  animation: fadeInRight 0.3s ease;
+}
+
+.user-sub-toast.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.user-sub-toast.error {
+  background: #fff5f5;
+  color: #c53030;
+  border: 1px solid #fed7d7;
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Current subscription banner ─────────────────────────────────────────────── */
+.current-sub-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  color: #1d4ed8;
+}
+
+.current-sub-banner strong {
+  font-size: 15px;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.current-sub-banner p {
+  font-size: 13px;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.btn-refresh {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #1d4ed8;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.btn-refresh:hover {
+  background: rgba(29, 78, 216, 0.1);
+}
+
+/* ── No plans message ──────────────────────────────────────────────────────── */
+.no-plans-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px;
+  color: var(--text-muted);
+  grid-column: 1 / -1;
+}
+
+/* ── Payment history section ──────────────────────────────────────────────── */
+.payment-history-section {
+  margin-top: 40px;
+  padding: 24px;
+  background: var(--card-bg, #fff);
+  border-radius: 16px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.payment-history-section h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #1a202c;
+}
+
+.payment-history-table-wrap {
+  overflow-x: auto;
+}
+
+.payment-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.payment-history-table th,
+.payment-history-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.payment-history-table th {
+  background: var(--bg-muted, #f7fafc);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.txn-id {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.history-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.history-status.success {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.history-status.failed {
+  background: #fff5f5;
+  color: #c53030;
+}
+
+.history-status.refunded {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.history-status.pending {
+  background: #f0f9ff;
+  color: #0369a1;
+}

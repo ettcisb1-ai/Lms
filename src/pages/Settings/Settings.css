@@ -1,0 +1,269 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+.st-page {
+  padding: 32px 28px;
+  max-width: 640px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Loading */
+.st-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 200px;
+  color: #6b7280;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.st-spin {
+  animation: spin 0.85s linear infinite;
+}
+
+/* Toast */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.st-toast {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  padding: 10px 18px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  animation: toastIn 0.2s ease;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+}
+
+.st-toast--saved {
+  background: #065f46;
+  color: #fff;
+}
+
+.st-toast--error {
+  background: #991b1b;
+  color: #fff;
+}
+
+/* Header */
+.st-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin: 0 0 6px;
+}
+
+.st-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -.4px;
+}
+
+.st-sub {
+  font-size: 13.5px;
+  color: #6b7280;
+  margin: 0 0 28px;
+}
+
+/* Card */
+.st-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 26px 24px;
+}
+
+.st-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.st-fr-badge {
+  padding: 2px 9px;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  letter-spacing: .03em;
+}
+
+.st-card-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.st-saving-icon {
+  color: #9ca3af;
+  margin-left: auto;
+}
+
+.st-card-desc {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 20px;
+  line-height: 1.55;
+}
+
+/* Tiles */
+.st-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.st-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  background: #fafafa;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color .18s, background .18s;
+}
+
+.st-tile:hover:not(:disabled) {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.st-tile:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+}
+
+.st-tile--free {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.st-tile--paid {
+  background-color: var(--primary-color);
+  background: #eef2ff;
+}
+
+/* Icon */
+.st-tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f3f4f6;
+  color: #9ca3af;
+  transition: background .18s, color .18s;
+}
+
+.st-tile-icon--free {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.st-tile-icon--paid {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+/* Body */
+.st-tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.st-tile-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.st-tile-detail {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Check circle */
+.st-tile-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: transparent;
+  background: transparent;
+  transition: all .18s;
+}
+
+.st-tile-check--free {
+  border-color: #10b981;
+  background: #10b981;
+  color: #fff;
+}
+
+.st-tile-check--paid {
+  background-color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+/* Banner */
+.st-banner {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  transition: background .25s, color .25s, border-color .25s;
+}
+
+.st-banner--free {
+  background: #f0fdf4;
+  color: #065f46;
+  border: 1px solid #bbf7d0;
+}
+
+.st-banner--paid {
+  background: #eef2ff;
+  color: #3730a3;
+  border: var(--primary-color);
+
+}

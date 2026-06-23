@@ -1,0 +1,106 @@
+/* Inherits all base styles from Login.css */
+
+/* ── Card size override ───────────────────────────────────────────────────── */
+.register-card {
+  height: auto;
+  min-height: 560px;
+}
+
+/* ── Global server-side error banner ─────────────────────────────────────── */
+.register-error {
+  background-color: #fff2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* ── Sign-in link below form ─────────────────────────────────────────────── */
+.register-login-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.link-btn {
+  color: var(--primary-color);
+  font-weight: 500;
+  font-size: 13px;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.link-btn:hover { color: var(--primary-hover); }
+
+/* ── Submit button disabled state ────────────────────────────────────────── */
+.login-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ── Field group: wraps input + inline error message ─────────────────────── */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Inline field error text ─────────────────────────────────────────────── */
+.field-error {
+  font-size: 12px;
+  color: #dc2626;
+  padding-left: 2px;
+  line-height: 1.4;
+  display: block;
+}
+
+/* ── Input border feedback: error state ──────────────────────────────────── */
+.login-input.input-error {
+  border-color: #f87171 !important;
+  background-color: #fff9f9;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.08);
+}
+
+/* ── Input border feedback: valid state ──────────────────────────────────── */
+.login-input.input-valid {
+  border-color: #4ade80 !important;
+  background-color: #f0fdf4;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.08);
+}
+
+/* ── Password wrapper: input + eye button side-by-side ───────────────────── */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper .login-input {
+  width: 100%;
+  padding-right: 44px; /* space for the eye icon */
+}
+
+/* ── Eye icon button ─────────────────────────────────────────────────────── */
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.eye-btn:hover { color: #1a202c; }

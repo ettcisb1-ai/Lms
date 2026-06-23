@@ -1,0 +1,53 @@
+.sales-chart-container {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #edf2f7;
+  height: 100%;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 4px;
+}
+
+.chart-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.chart-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background-color: transparent;
+  border-radius: 16px;
+  border: 1px solid #edf2f7;
+}
+
+.filter-btn.active {
+  background-color: var(--blue-bg);
+  color: var(--blue-color);
+  border-color: var(--blue-bg);
+}
+
+.chart-wrapper {
+  width: 100%;
+  margin-top: 16px;
+}

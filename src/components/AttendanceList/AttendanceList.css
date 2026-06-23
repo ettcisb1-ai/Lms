@@ -1,0 +1,115 @@
+.attendance-list-container {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #edf2f7;
+  height: 100%;
+}
+
+.attendance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.attendance-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 4px;
+}
+
+.attendance-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background-color: var(--success-bg);
+  color: var(--success-color);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.live-badge .dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--success-color);
+  border-radius: 50%;
+}
+
+.attendee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.attendee-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.attendee-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.attendee-avatar.blue { background-color: var(--blue-bg); color: var(--blue-color); }
+.attendee-avatar.purple { background-color: var(--purple-bg); color: var(--purple-color); }
+.attendee-avatar.pink { background-color: #fff5f7; color: #d53f8c; }
+.attendee-avatar.yellow { background-color: var(--yellow-bg); color: #d69e2e; }
+.attendee-avatar.green { background-color: var(--success-bg); color: var(--success-color); }
+.attendee-avatar.red { background-color: var(--danger-bg); color: var(--danger-color); }
+
+.attendee-name {
+  font-size: 14px;
+  color: #1a202c;
+  font-weight: 500;
+  width: 130px;
+}
+
+.attendee-line {
+  flex: 1;
+  height: 4px;
+  background-color: #edf2f7;
+  border-radius: 2px;
+  margin: 0 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.attendee-line-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 16px;
+  background-color: #fc8181;
+  border-radius: 2px;
+}
+
+.attendee-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 16px;
+}
+
+.attendee-status.out {
+  background-color: #fff5f5;
+  color: #fc8181;
+}
