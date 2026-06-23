@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://lms-backend-vert-alpha.vercel.app';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-gules-one-88.vercel.app';
 export const BASE_URL = API_BASE_URL;
 
 export const AUTH_ENDPOINTS = {
