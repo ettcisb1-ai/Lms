@@ -209,7 +209,11 @@
   color: var(--success-color);
 }
 
-.status-badge.inactive,
+.status-badge.inactive {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+
 .status-badge.suspended {
   background-color: var(--danger-bg);
   color: var(--danger-color);

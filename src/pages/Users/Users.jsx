@@ -136,7 +136,9 @@ const Users = () => {
           email: u.email,
           phoneNumber: u.phoneNumber || '',
           role: u.role === 'admin' ? 'Admin' : 'User',
-          status: u.isActive ? 'Active' : 'Suspended',
+          status: u.status
+            ? u.status.charAt(0).toUpperCase() + u.status.slice(1)  // 'active' → 'Active'
+            : (u.isActive ? 'Active' : 'Suspended'),  // fallback for old records
           enrolled: u.courses ? u.courses.length : 0,
           registeredDate: u.createdAt ? u.createdAt.split('T')[0] : '—',
           subscription: u.subscribed ? 'Pro (Paid)' : 'Free',
