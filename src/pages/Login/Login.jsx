@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { AUTH_ENDPOINTS, ADMIN_ENDPOINTS } from '../../utils/api';
@@ -12,6 +12,19 @@ const Login = () => {
   const [error, setError]             = useState('');
   const [isLoading, setIsLoading]     = useState(false);
   const navigate = useNavigate();
+
+  // Auto-redirect if already logged in (e.g., reopened browser)
+  useEffect(() => {
+    const token = localStorage.getItem('lms_token');
+    const role = localStorage.getItem('lms_user_role');
+    if (token && role) {
+      if (role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [navigate]);
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);

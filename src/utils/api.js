@@ -217,6 +217,9 @@ export const fetchSecureStreamUrl = async (videoId, authToken) => {
   return {
     streamUrl,
     isHLS: data.isHLS || false,   // true → use HLS.js, false → plain <video src>
+    isDrm: data.isDrm || false,   // true → use Shaka Player DRM
+    isDASH: data.isDASH || false, // true → DASH stream
+    licenseServerUrl: data.licenseServerUrl || null,
     security: data.security,
     expiresIn: data.expiresIn,
   };

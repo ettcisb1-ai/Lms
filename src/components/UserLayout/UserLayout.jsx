@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import './UserLayout.css';
 import { NOTIFICATION_ENDPOINTS, AUTH_ENDPOINTS } from '../../utils/api';
+import { initScreenshotDetection } from '../../utils/screenshotDetector';
 
 const getToken = () => localStorage.getItem('lms_token');
 
@@ -35,6 +36,12 @@ const UserLayout = () => {
   const [ipWarning, setIpWarning] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Anti-Screenshot & Screen Capture Protection (FR-30, FR-31)
+  useEffect(() => {
+    const cleanup = initScreenshotDetection();
+    return cleanup;
+  }, []);
 
   // Fetch real unread count from API
   const fetchUnreadCount = useCallback(async () => {
@@ -153,7 +160,9 @@ const UserLayout = () => {
   });
 
   return (
-    <div className={`user-layout ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+    <div className={`user-layout ${isSidebarCollapsed ? 'collapsed' : ''}`} onContextMenu={(e) => e.preventDefault()}>
+
+
       {/* Sidebar */}
       <aside className={`user-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-logo">

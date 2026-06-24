@@ -442,3 +442,26 @@
     padding: 20px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ANTI-PIRACY & SCREENSHOT PROTECTION (FR-30, FR-31)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Print Blocking: Completely hides the application contents when user tries to Print/Save-PDF */
+@media print {
+  html, body, #root, .user-layout {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
+/* User Selection Prevention */
+.user-layout {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+
+

@@ -9,6 +9,40 @@ import Hls from 'hls.js';
 import './UserCoursePlayer.css';
 import { COURSE_ENDPOINTS, fetchSecureStreamUrl, verifyCourseAccess, API_BASE_URL } from '../../utils/api';
 
+const ensureShakaLoaded = () => {
+  return new Promise((resolve) => {
+    if (window.shaka) {
+      resolve(true);
+      return;
+    }
+
+    console.log("[DRM_PLAYER] Shaka not found on window, loading dynamically...");
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js";
+    script.async = true;
+    script.onload = () => {
+      console.log("[DRM_PLAYER] Shaka Player CDN loaded dynamically successfully.");
+      resolve(true);
+    };
+    script.onerror = () => {
+      console.error("[DRM_PLAYER] Failed to load Shaka Player from primary CDN, trying backup unpkg...");
+      const backupScript = document.createElement('script');
+      backupScript.src = "https://unpkg.com/shaka-player@4.3.5/dist/shaka-player.compiled.js";
+      backupScript.async = true;
+      backupScript.onload = () => {
+        console.log("[DRM_PLAYER] Shaka Player backup CDN loaded successfully.");
+        resolve(true);
+      };
+      backupScript.onerror = () => {
+        console.error("[DRM_PLAYER] All Shaka Player CDNs failed to load.");
+        resolve(false);
+      };
+      document.body.appendChild(backupScript);
+    };
+    document.body.appendChild(script);
+  });
+};
+
 const UserCoursePlayer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -34,6 +68,9 @@ const UserCoursePlayer = () => {
   // ── FR-29/32: Secure streaming state ────────────────────────────────────────
   const [secureStreamUrl, setSecureStreamUrl] = useState('');
   const [isHLS, setIsHLS] = useState(false);          // true → HLS.js, false → plain src
+  const [isDrm, setIsDrm] = useState(false);          // true → Shaka Player DRM
+  const [isDASH, setIsDASH] = useState(false);        // true → DASH stream
+  const [licenseServerUrl, setLicenseServerUrl] = useState('');
   const [videoSecurity, setVideoSecurity] = useState(null);
   const [streamTokenLoading, setStreamTokenLoading] = useState(false);
 
@@ -64,6 +101,7 @@ const UserCoursePlayer = () => {
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const videoEl = useRef(null);
   const hlsRef = useRef(null); // holds the active HLS.js instance
+  const shakaRef = useRef(null); // holds the active Shaka Player instance
 
   // ══════════════════════════════════════════════════════════════════════════════
   // FR-28: Verify course access before loading any content
@@ -174,15 +212,21 @@ const UserCoursePlayer = () => {
 
     setStreamTokenLoading(true);
     try {
-      const { streamUrl, isHLS: hlsFlag, security } = await fetchSecureStreamUrl(videoId, token);
+      const { streamUrl, isHLS: hlsFlag, isDrm: drmFlag, isDASH: dashFlag, licenseServerUrl: licenseUrl, security } = await fetchSecureStreamUrl(videoId, token);
       setSecureStreamUrl(streamUrl);   // FR-29: signed Cloudinary URL or opaque proxy token
       setIsHLS(hlsFlag);               // FR-34: true → HLS.js adaptive, false → plain src
+      setIsDrm(drmFlag);
+      setIsDASH(dashFlag);
+      setLicenseServerUrl(licenseUrl || '');
       setVideoSecurity(security);
     } catch (err) {
       console.warn('Stream token fetch failed, falling back:', err.message);
       const fallback = videoDirectUrl || lecture.url || '';
       setSecureStreamUrl(fallback);
       setIsHLS(false);
+      setIsDrm(false);
+      setIsDASH(false);
+      setLicenseServerUrl('');
       setVideoSecurity(null);
     } finally {
       setStreamTokenLoading(false);
@@ -267,45 +311,91 @@ const UserCoursePlayer = () => {
       hlsRef.current = null;
     }
 
+    // Destroy existing Shaka Player instance on every change
+    if (shakaRef.current) {
+      shakaRef.current.destroy().catch(() => {});
+      shakaRef.current = null;
+    }
+
     if (!secureStreamUrl) {
       videoElement.removeAttribute('src');
       videoElement.load();
       return;
     }
 
-    if (isHLS) {
-      if (Hls.isSupported()) {
-        // HLS.js adaptive streaming (Chrome, Firefox, Edge)
-        const hls = new Hls({
-          maxBufferLength: 30,
-          maxMaxBufferLength: 600,
-          enableWorker: true,
-          debug: false,
-        });
-        hls.loadSource(secureStreamUrl);
-        hls.attachMedia(videoElement);
-        hls.on(Hls.Events.ERROR, (_evt, data) => {
-          if (data.fatal) console.error('Fatal HLS error:', data.type, data.details);
-        });
-        hlsRef.current = hls;
-      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS (Safari / iOS)
+    const initPlayer = async () => {
+      if (isDrm) {
+        const loaded = await ensureShakaLoaded();
+        if (loaded && window.shaka) {
+          console.log("[DRM_PLAYER] Initializing Shaka Player for Widevine DRM...");
+          const shakaPlayer = new window.shaka.Player(videoElement);
+          shakaRef.current = shakaPlayer;
+
+          shakaPlayer.addEventListener('error', (event) => {
+            console.error('[DRM_PLAYER] Shaka Player error:', event.detail);
+          });
+
+          const drmConfig = {};
+          if (licenseServerUrl) {
+            drmConfig['servers'] = {
+              'com.widevine.alpha': licenseServerUrl,
+              'com.microsoft.playready': licenseServerUrl
+            };
+          }
+          shakaPlayer.configure({ drm: drmConfig });
+
+          try {
+            await shakaPlayer.load(secureStreamUrl);
+            console.log('[DRM_PLAYER] Shaka Player loaded stream successfully');
+            return;
+          } catch (error) {
+            console.error('[DRM_PLAYER] Shaka Player load failed, falling back:', error);
+          }
+        }
+      }
+
+      // Fallback path if not DRM or Shaka failed to load/play
+      if (isHLS) {
+        if (Hls.isSupported()) {
+          // HLS.js adaptive streaming (Chrome, Firefox, Edge)
+          const hls = new Hls({
+            maxBufferLength: 30,
+            maxMaxBufferLength: 600,
+            enableWorker: true,
+            debug: false,
+          });
+          hls.loadSource(secureStreamUrl);
+          hls.attachMedia(videoElement);
+          hls.on(Hls.Events.ERROR, (_evt, data) => {
+            if (data.fatal) console.error('Fatal HLS error:', data.type, data.details);
+          });
+          hlsRef.current = hls;
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+          // Native HLS (Safari / iOS)
+          videoElement.src = secureStreamUrl;
+          videoElement.load();
+        }
+      } else {
+        // Plain MP4 or legacy proxy URL
         videoElement.src = secureStreamUrl;
         videoElement.load();
       }
-    } else {
-      // Plain MP4 or legacy proxy URL
-      videoElement.src = secureStreamUrl;
-      videoElement.load();
-    }
+    };
+
+    initPlayer();
 
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
+      if (shakaRef.current) {
+        const p = shakaRef.current;
+        shakaRef.current = null;
+        p.destroy().catch(() => {});
+      }
     };
-  }, [secureStreamUrl, isHLS]);
+  }, [secureStreamUrl, isHLS, isDrm, licenseServerUrl]);
 
   // ══════════════════════════════════════════════════════════════════════════════
   // FR-30: Prevent right-click / download keyboard shortcuts
@@ -400,6 +490,9 @@ const UserCoursePlayer = () => {
     // existing HLS instance before the new token/URL arrives.
     setSecureStreamUrl('');
     setIsHLS(false);
+    setIsDrm(false);
+    setIsDASH(false);
+    setLicenseServerUrl('');
 
     if (videoEl.current) videoEl.current.pause();
 
