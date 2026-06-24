@@ -138,7 +138,7 @@ const Users = () => {
           role: u.role === 'admin' ? 'Admin' : 'User',
           status: u.status
             ? u.status.charAt(0).toUpperCase() + u.status.slice(1)  // 'active' → 'Active'
-            : (u.isActive ? 'Active' : 'Suspended'),  // fallback for old records
+            : (u.isActive ? 'Active' : 'Inactive'),  // fallback for old records
           enrolled: u.courses ? u.courses.length : 0,
           registeredDate: u.createdAt ? u.createdAt.split('T')[0] : '—',
           subscription: u.subscribed ? 'Pro (Paid)' : 'Free',
@@ -462,7 +462,7 @@ const Users = () => {
     const token = localStorage.getItem('lms_token');
 
     try {
-      if (action === 'Suspend' || action === 'Activate') {
+      if (action === 'Deactivate' || action === 'Activate') {
         const isActive = action === 'Activate';
         const response = await fetch(ADMIN_ENDPOINTS.USER_STATUS(user.id), {
           method: 'PATCH',
@@ -570,7 +570,6 @@ const Users = () => {
                 <option value="All">All Status</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
-                <option value="Suspended">Suspended</option>
               </select>
             </div>
           </div>
@@ -634,10 +633,10 @@ const Users = () => {
                           </button>
                           {activeDropdown === user.id && (
                             <div className="dropdown-menu">
-                              {user.status === 'Suspended' ? (
-                                <button onClick={(e) => handleAction(e, 'Activate', user)}><CheckCircle size={14} /> Un suspend User</button>
+                              {user.status === 'Inactive' ? (
+                                <button onClick={(e) => handleAction(e, 'Activate', user)}><CheckCircle size={14} /> Activate User</button>
                               ) : (
-                                <button onClick={(e) => handleAction(e, 'Suspend', user)} className="text-warning"><Ban size={14} /> Suspend User</button>
+                                <button onClick={(e) => handleAction(e, 'Deactivate', user)} className="text-warning"><Ban size={14} />Inactive</button>
                               )}
                               <button onClick={(e) => handleAction(e, 'Reset Password', user)}><Key size={14} /> Reset Password</button>
                               <button onClick={(e) => openAccessPanel(e, user)}><Shield size={14} /> Course Access</button>
@@ -694,7 +693,7 @@ const Users = () => {
                   <p>Registered IP: <code>{activityUser.ip}</code> · Current IP: <code>{activityUser.currentIp}</code></p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-                  <button className="btn-flag-block" onClick={() => { handleAction({ stopPropagation: () => { } }, 'Suspend', activityUser); setActivityUser(null); }}>
+                  <button className="btn-flag-block" onClick={() => { handleAction({ stopPropagation: () => { } }, 'Deactivate', activityUser); setActivityUser(null); }}>
                     <Lock size={13} /> Block User
                   </button>
                   <button className="btn-flag-clear" onClick={() => clearIpFlag(activityUser.id)}>
@@ -840,7 +839,6 @@ const Users = () => {
                   <select className="uf-select" value={userModal.data.status} onChange={e => handleModalChange('status', e.target.value)} disabled={savingUser}>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
-                    <option value="Suspended">Suspended</option>
                   </select>
                 </div>
                 <div className="uf-group uf-full">

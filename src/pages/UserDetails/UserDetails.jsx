@@ -90,7 +90,7 @@ const UserDetails = () => {
   };
 
   const handleToggleStatus = async () => {
-    if (!window.confirm(`${user.isActive ? 'Suspend' : 'Activate'} this user?`)) return;
+    if (!window.confirm(`${user.isActive ? 'Deactivate' : 'Activate'} this user?`)) return;
     try {
       const res = await fetch(ADMIN_ENDPOINTS.USER_STATUS(id), {
         method: 'PATCH',
@@ -150,7 +150,7 @@ const UserDetails = () => {
             <Edit2 size={16} /> Edit
           </button>
           <button className={user.isActive ? 'btn-danger' : 'btn-secondary'} onClick={handleToggleStatus}>
-            {user.isActive ? <><Ban size={16} /> Suspend</> : <><CheckCircle size={16} /> Activate</>}
+            {user.isActive ? <><Ban size={16} /> Deactivate</> : <><CheckCircle size={16} /> Activate</>}
           </button>
         </div>
       </div>
@@ -163,8 +163,8 @@ const UserDetails = () => {
             <p className="profile-email">{user.email}</p>
             <div className="profile-badges">
               <span className={`role-badge ${user.role?.toLowerCase()}`}>{user.role}</span>
-              <span className={`status-badge ${user.isActive ? 'active' : 'suspended'}`}>
-                {user.isActive ? 'Active' : 'Suspended'}
+              <span className={`status-badge ${user.isActive ? 'active' : 'inactive'}`}>
+                {user.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
           </div>
@@ -174,7 +174,7 @@ const UserDetails = () => {
             <div className="action-list">
               <button className="action-btn" onClick={handleToggleStatus}>
                 <Ban size={16} className="text-warning" />
-                {user.isActive ? 'Suspend User' : 'Activate User'}
+                {user.isActive ? 'Deactivate User' : 'Activate User'}
               </button>
               <button className="action-btn" onClick={() => alert('Password reset link generated.')}>
                 <Key size={16} /> Reset Password

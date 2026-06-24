@@ -358,7 +358,6 @@
 }
 
 .status-badge-dot.inactive::before,
-.status-badge-dot.suspended::before,
 .status-badge-dot.refunded::before {
   background-color: var(--danger-color);
 }
