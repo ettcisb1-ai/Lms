@@ -121,7 +121,8 @@ const UserCourses = () => {
   const handleStartOrEnroll = (course) => {
     const isEnrolled = enrollments.some(e => e.id === course.id);
     const isPaidMode = systemSettings.subscriptionModeEnabled && systemSettings.portalMode === 'paid';
-    const isLocked = isPaidMode && course.isPremium && !userProfile.subscribed;
+    const isLocked = isPaidMode && course.isPremium && !userProfile.subscribed &&
+      !userProfile.courses?.includes(course.id) && !userProfile.courses?.includes(course.title);
 
     if (isLocked) {
       navigate('/dashboard/subscriptions');
@@ -211,7 +212,8 @@ const UserCourses = () => {
           const isEnrolled = enrollments.some(e => e.id === course.id);
           const enrollmentInfo = enrollments.find(e => e.id === course.id);
           const isPaidMode = systemSettings.subscriptionModeEnabled && systemSettings.portalMode === 'paid';
-          const isLocked = isPaidMode && course.isPremium && !userProfile.subscribed;
+          const isLocked = isPaidMode && course.isPremium && !userProfile.subscribed &&
+            !userProfile.courses?.includes(course.id) && !userProfile.courses?.includes(course.title);
 
           return (
             <div key={course.id} className={`catalog-course-card ${isLocked ? 'locked-state' : ''}`}>

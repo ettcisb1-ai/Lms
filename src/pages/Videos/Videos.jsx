@@ -5,7 +5,7 @@ import {
   Clock, Plus, X, Save, Pencil, Trash2, Settings, Check, AlertTriangle, Loader
 } from 'lucide-react';
 import './Videos.css';
-import { VIDEO_ENDPOINTS, CATEGORY_ENDPOINTS, COURSE_ENDPOINTS, UPLOAD_ENDPOINT } from '../../utils/api';
+import { VIDEO_ENDPOINTS, CATEGORY_ENDPOINTS, COURSE_ENDPOINTS, UPLOAD_ENDPOINT, formatStoredDuration } from '../../utils/api';
 import { ShimmerVideos } from '../../components/Shimmer/Shimmer';
 
 // ─── Dropdown Menu Component ─────────────────────────────────────────────────
@@ -455,9 +455,14 @@ const Videos = () => {
         URL.revokeObjectURL(url);
         const secs = vid.duration;
         if (!secs || !isFinite(secs)) { resolve('0:00'); return; }
-        const m = Math.floor(secs / 60);
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
         const s = Math.floor(secs % 60);
-        resolve(`${m}:${String(s).padStart(2, '0')}`);
+        if (h > 0) {
+          resolve(`${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+        } else {
+          resolve(`${m}:${String(s).padStart(2, '0')}`);
+        }
       };
       vid.onerror = () => { URL.revokeObjectURL(url); resolve('0:00'); };
       vid.src = url;
@@ -607,7 +612,7 @@ const Videos = () => {
                     <PlayCircle size={48} className="play-icon" />
                   </div>
                 )}
-                <span className="video-duration">{video.duration}</span>
+                <span className="video-duration">{formatStoredDuration(video.duration)}</span>
                 {video.status === 'Processing' && (
                   <div className="processing-badge"><Clock size={12} /> Processing...</div>
                 )}

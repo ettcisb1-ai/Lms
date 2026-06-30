@@ -224,3 +224,28 @@ export const fetchSecureStreamUrl = async (videoId, authToken) => {
     expiresIn: data.expiresIn,
   };
 };
+
+export const formatStoredDuration = (durationStr) => {
+  if (!durationStr || typeof durationStr !== 'string') return '0:00';
+  const parts = durationStr.split(':');
+  if (parts.length === 3) {
+    const hrs = parseInt(parts[0], 10);
+    const mins = parseInt(parts[1], 10);
+    const secs = parseInt(parts[2], 10);
+    if (!isNaN(hrs) && !isNaN(mins) && !isNaN(secs)) {
+      return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+  } else if (parts.length === 2) {
+    const mins = parseInt(parts[0], 10);
+    const secs = parseInt(parts[1], 10);
+    if (!isNaN(mins) && !isNaN(secs)) {
+      if (mins >= 60) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h}:${String(m).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+      return `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+  }
+  return durationStr;
+};

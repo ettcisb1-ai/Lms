@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Hls from 'hls.js';
 import './UserCoursePlayer.css';
-import { COURSE_ENDPOINTS, fetchSecureStreamUrl, verifyCourseAccess, API_BASE_URL } from '../../utils/api';
+import { COURSE_ENDPOINTS, fetchSecureStreamUrl, verifyCourseAccess, API_BASE_URL, formatStoredDuration } from '../../utils/api';
 
 const ensureShakaLoaded = () => {
   return new Promise((resolve) => {
@@ -536,7 +536,12 @@ const UserCoursePlayer = () => {
         : null;
 
       if (videoId) {
-        const formatted = `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}`;
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        const formatted = h > 0
+          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+          : `${m}:${String(s).padStart(2, '0')}`;
         const token = localStorage.getItem('lms_token');
         fetch(`${API_BASE_URL}/api/videos/${videoId}`, {
           method: 'PUT',
@@ -629,12 +634,14 @@ const UserCoursePlayer = () => {
         let totalSec = 600;
         if (lecture.duration) {
           const parts = lecture.duration.split(':');
-          if (parts.length === 2) {
-            totalSec = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+          if (parts.length === 3) {
+            totalSec = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+          } else if (parts.length === 2) {
+            totalSec = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
           } else {
             const matches = lecture.duration.match(/\d+/);
             if (matches) {
-              totalSec = parseInt(matches[0]) * 60;
+              totalSec = parseInt(matches[0], 10) * 60;
             }
           }
         }
@@ -684,8 +691,12 @@ const UserCoursePlayer = () => {
 
   const formatTime = (t) => {
     if (isNaN(t)) return '00:00';
-    const m = Math.floor(t / 60);
+    const h = Math.floor(t / 3600);
+    const m = Math.floor((t % 3600) / 60);
     const s = Math.floor(t % 60);
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
@@ -981,9 +992,16 @@ const UserCoursePlayer = () => {
                     <Clock size={12} /> Duration: {
                       (!activeLecture?.duration || activeLecture.duration === '0:00')
                         ? (duration > 0
-                            ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, '0')}`
+                            ? (() => {
+                                const h = Math.floor(duration / 3600);
+                                const m = Math.floor((duration % 3600) / 60);
+                                const s = Math.floor(duration % 60);
+                                return h > 0
+                                  ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                                  : `${m}:${String(s).padStart(2, '0')}`;
+                              })()
                             : '0:00')
-                        : activeLecture.duration
+                        : formatStoredDuration(activeLecture.duration)
                     }
                   </span>
                   <span className="meta-tag"><Settings size={12} /> Adaptive Bitrate Stream</span>
@@ -1122,7 +1140,7 @@ const UserCoursePlayer = () => {
                                     </span>
                                   ) : (
                                     <span className="meta-duration">
-                                      <Clock size={11} /> {lecture.duration}
+                                      <Clock size={11} /> {formatStoredDuration(lecture.duration)}
                                     </span>
                                   )}
                                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+  import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Upload, Lock, Shield, EyeOff, FileDown, Loader, Info
@@ -7,6 +7,40 @@ import Hls from 'hls.js';
 import './VideoSettings.css';
 import { VIDEO_ENDPOINTS, COURSE_ENDPOINTS, API_BASE_URL } from '../../utils/api';
 import { ShimmerVideoSettings } from '../../components/Shimmer/Shimmer';
+
+const ensureShakaLoaded = () => {
+  return new Promise((resolve) => {
+    if (window.shaka) {
+      resolve(true);
+      return;
+    }
+
+    console.log("[DRM_PLAYER] Shaka not found on window, loading dynamically...");
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js";
+    script.async = true;
+    script.onload = () => {
+      console.log("[DRM_PLAYER] Shaka Player CDN loaded dynamically successfully.");
+      resolve(true);
+    };
+    script.onerror = () => {
+      console.error("[DRM_PLAYER] Failed to load Shaka Player from primary CDN, trying backup unpkg...");
+      const backupScript = document.createElement('script');
+      backupScript.src = "https://unpkg.com/shaka-player@4.3.5/dist/shaka-player.compiled.js";
+      backupScript.async = true;
+      backupScript.onload = () => {
+        console.log("[DRM_PLAYER] Shaka Player backup CDN loaded successfully.");
+        resolve(true);
+      };
+      backupScript.onerror = () => {
+        console.error("[DRM_PLAYER] All Shaka Player CDNs failed to load.");
+        resolve(false);
+      };
+      document.body.appendChild(backupScript);
+    };
+    document.body.appendChild(script);
+  });
+};
 
 const VideoSettings = () => {
   const { id } = useParams();
@@ -31,10 +65,20 @@ const VideoSettings = () => {
   // ── Player state ──────────────────────────────────────────────────────────
   const [secureStreamUrl, setSecureStreamUrl] = useState('');
   const [isHLS, setIsHLS] = useState(false);
+  const [isDrm, setIsDrm] = useState(false);
+  const [isDASH, setIsDASH] = useState(false);
+  const [licenseServerUrl, setLicenseServerUrl] = useState('');
   const [streamTokenLoading, setStreamTokenLoading] = useState(false);
 
+  // Track when the video element is mounted so the player effect re-runs after isLoading clears
+  const [videoElMounted, setVideoElMounted] = useState(false);
   const videoEl = useRef(null);
+  const videoRefCallback = useCallback((el) => {
+    videoEl.current = el;
+    if (el) setVideoElMounted(true);
+  }, []);
   const hlsRef = useRef(null);
+  const shakaRef = useRef(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -72,64 +116,130 @@ const VideoSettings = () => {
   useEffect(() => { fetchData(); }, [id]);
 
   // ── Fetch signed stream token ─────────────────────────────────────────────
-  useEffect(() => {
+  const loadStreamToken = useCallback(async () => {
     if (!id) return;
-    const loadToken = async () => {
-      setStreamTokenLoading(true);
-      const token = localStorage.getItem('lms_token');
-      try {
-        const res = await fetch(VIDEO_ENDPOINTS.GET_STREAM_TOKEN(id), {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const result = await res.json();
-        if (result.success && result.streamUrl) {
-          console.log('[VideoSettings] Stream URL:', result.streamUrl);
-          const absoluteStreamUrl = result.streamUrl.startsWith('http')
-            ? result.streamUrl
-            : `${API_BASE_URL}${result.streamUrl}`;
-          setSecureStreamUrl(absoluteStreamUrl);
-          setIsHLS(result.isHLS || false);
-        } else {
-          console.error('[VideoSettings] Token failed:', result);
-        }
-      } catch (err) {
-        console.error('Stream token error:', err);
-      } finally {
-        setStreamTokenLoading(false);
+    setStreamTokenLoading(true);
+    const token = localStorage.getItem('lms_token');
+    try {
+      const res = await fetch(VIDEO_ENDPOINTS.GET_STREAM_TOKEN(id), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (result.success && result.streamUrl) {
+        console.log('[VideoSettings] Stream URL:', result.streamUrl);
+        const absoluteStreamUrl = result.streamUrl.startsWith('http')
+          ? result.streamUrl
+          : `${API_BASE_URL}${result.streamUrl}`;
+        setSecureStreamUrl(absoluteStreamUrl);
+        setIsHLS(result.isHLS || false);
+        setIsDrm(result.isDrm || false);
+        setIsDASH(result.isDASH || false);
+        setLicenseServerUrl(result.licenseServerUrl || '');
+      } else {
+        console.error('[VideoSettings] Token failed:', result);
+        setSecureStreamUrl('');
       }
-    };
-    loadToken();
+    } catch (err) {
+      console.error('Stream token error:', err);
+      setSecureStreamUrl('');
+    } finally {
+      setStreamTokenLoading(false);
+    }
   }, [id]);
 
-  // ── HLS management ────────────────────────────────────────────────────────
+  useEffect(() => { loadStreamToken(); }, [loadStreamToken]);
+
+  // ── Player source management (DRM, HLS, or Plain MP4) ────────────────────
   useEffect(() => {
     const el = videoEl.current;
     if (!el) return;
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    if (!secureStreamUrl || !isHLS) return;
 
-    if (Hls.isSupported()) {
-      console.log('[VideoSettings] Using HLS.js for:', secureStreamUrl);
-      const hls = new Hls({ maxBufferLength: 30, enableWorker: true, debug: false });
-      hls.loadSource(secureStreamUrl);
-      hls.attachMedia(el);
-      hls.on(Hls.Events.ERROR, (_evt, data) => {
-        console.error('[HLS Error]', data.type, data.details, data);
-      });
-      hlsRef.current = hls;
-    } else if (el.canPlayType('application/vnd.apple.mpegurl')) {
-      el.src = secureStreamUrl;
-      el.load();
+    // Destroy existing HLS instance on change
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
     }
+
+    // Destroy existing Shaka Player instance on change
+    if (shakaRef.current) {
+      shakaRef.current.destroy().catch(() => {});
+      shakaRef.current = null;
+    }
+
+    if (!secureStreamUrl) {
+      el.removeAttribute('src');
+      el.load();
+      return;
+    }
+
+    const initPlayer = async () => {
+      if (isDrm) {
+        const loaded = await ensureShakaLoaded();
+        if (loaded && window.shaka) {
+          console.log("[VideoSettings] Initializing Shaka Player for Widevine DRM...");
+          const shakaPlayer = new window.shaka.Player(el);
+          shakaRef.current = shakaPlayer;
+
+          shakaPlayer.addEventListener('error', (event) => {
+            console.error('[VideoSettings Shaka Error]', event.detail);
+          });
+
+          const drmConfig = {};
+          if (licenseServerUrl) {
+            drmConfig['servers'] = {
+              'com.widevine.alpha': licenseServerUrl,
+              'com.microsoft.playready': licenseServerUrl
+            };
+          }
+          shakaPlayer.configure({ drm: drmConfig });
+
+          try {
+            await shakaPlayer.load(secureStreamUrl);
+            console.log('[VideoSettings] Shaka Player loaded stream successfully');
+            return;
+          } catch (error) {
+            console.error('[VideoSettings] Shaka Player load failed, falling back:', error);
+          }
+        }
+      }
+
+      // Fallback path if not DRM or Shaka failed
+      if (isHLS) {
+        if (Hls.isSupported()) {
+          console.log('[VideoSettings] Using HLS.js for:', secureStreamUrl);
+          const hls = new Hls({ maxBufferLength: 30, enableWorker: true, debug: false });
+          hls.loadSource(secureStreamUrl);
+          hls.attachMedia(el);
+          hls.on(Hls.Events.ERROR, (_evt, data) => {
+            if (data.fatal) console.error('Fatal HLS error:', data.type, data.details);
+          });
+          hlsRef.current = hls;
+        } else if (el.canPlayType('application/vnd.apple.mpegurl')) {
+          el.src = secureStreamUrl;
+          el.load();
+        }
+      } else {
+        // Plain MP4 — proxy stream URL
+        console.log('[VideoSettings] Setting plain MP4 src:', secureStreamUrl);
+        el.src = secureStreamUrl;
+        el.load();
+      }
+    };
+
+    initPlayer();
 
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
+      if (shakaRef.current) {
+        shakaRef.current.destroy().catch(() => {});
+        shakaRef.current = null;
+      }
     };
-  }, [secureStreamUrl, isHLS]);
+  }, [secureStreamUrl, isHLS, isDrm, licenseServerUrl, videoElMounted]);
 
 
 
@@ -151,7 +261,12 @@ const VideoSettings = () => {
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || 'Failed to save.');
-      if (result.success) { alert('Video settings saved!'); navigate('/admin/videos'); }
+      if (result.success) {
+        alert('Video settings saved!');
+        // Re-fetch the stream token in case status/settings changed
+        await loadStreamToken();
+        navigate('/admin/videos');
+      }
     } catch (err) {
       alert(err.message || 'Failed to save.');
     } finally {
@@ -200,19 +315,18 @@ const VideoSettings = () => {
             </div>
           )}
 
-          {/* Normal native video element */}
+          {/* Normal native video element — always rendered so ref is stable */}
           <video
-            ref={videoEl}
+            ref={videoRefCallback}
             className="secure-video-element"
-            src={isHLS ? undefined : secureStreamUrl || undefined}
             controls
             playsInline
             controlsList="nodownload"
             disablePictureInPicture
             preload="auto"
-            style={{ display: secureStreamUrl ? 'block' : 'none' }}
             onError={(e) => {
-              if (e.target.error) {
+              if (e.target.error && !isDrm) {
+                console.error('[VideoSettings] Video error code:', e.target.error.code, e.target.error.message);
                 alert("Video Playback Error:\nCode: " + e.target.error.code + "\nMessage: " + e.target.error.message);
               }
             }}
@@ -221,7 +335,7 @@ const VideoSettings = () => {
           {/* Security info banner */}
           <div className="inspect-protection-banner">
             <Info size={12} />
-            <span>Secure stream · Admin preview · {isHLS ? 'HLS adaptive' : 'MP4'}</span>
+            <span>Secure stream · Admin preview · {isDrm ? 'Widevine DRM' : isHLS ? 'HLS adaptive' : 'MP4'}</span>
           </div>
         </div>
       </div>

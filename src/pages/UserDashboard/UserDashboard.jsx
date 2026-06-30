@@ -154,7 +154,8 @@ const UserDashboard = () => {
     // Subscription gate: if paid mode is active and course is premium, require subscription
     const course = enrollments.find(c => c.id === courseId);
     const isPaidMode = portalSettings.subscriptionModeEnabled && portalSettings.portalMode === 'paid';
-    if (course?.isPremium && isPaidMode && !userProfile.subscribed) {
+    const isAssigned = userProfile.courses?.includes(courseId) || userProfile.courses?.includes(course?.title);
+    if (course?.isPremium && isPaidMode && !userProfile.subscribed && !isAssigned) {
       navigate('/dashboard/subscriptions');
       return;
     }

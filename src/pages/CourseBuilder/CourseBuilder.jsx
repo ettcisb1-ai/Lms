@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, GripVertical, Video, Search, Trash2, Edit2, PlayCircle, X, Save, UploadCloud, Film, Loader } from 'lucide-react';
 import './CourseBuilder.css';
-import { COURSE_ENDPOINTS, VIDEO_ENDPOINTS, UPLOAD_ENDPOINT, CATEGORY_ENDPOINTS } from '../../utils/api';
+import { COURSE_ENDPOINTS, VIDEO_ENDPOINTS, UPLOAD_ENDPOINT, CATEGORY_ENDPOINTS, formatStoredDuration } from '../../utils/api';
 
 const CourseBuilder = () => {
   const { id } = useParams();
@@ -238,9 +238,14 @@ const CourseBuilder = () => {
         URL.revokeObjectURL(url);
         const secs = vid.duration;
         if (!secs || !isFinite(secs)) { resolve('0:00'); return; }
-        const m = Math.floor(secs / 60);
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
         const s = Math.floor(secs % 60);
-        resolve(`${m}:${String(s).padStart(2, '0')}`);
+        if (h > 0) {
+          resolve(`${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+        } else {
+          resolve(`${m}:${String(s).padStart(2, '0')}`);
+        }
       };
       vid.onerror = () => { URL.revokeObjectURL(url); resolve('0:00'); };
       vid.src = url;
@@ -405,7 +410,7 @@ const CourseBuilder = () => {
                           <div className="lecture-drag-handle"><GripVertical size={16} /></div>
                           <PlayCircle size={16} className="lecture-icon" />
                           <span className="lecture-title">{lecture.title}</span>
-                          <span className="lecture-duration">{lecture.duration}</span>
+                          <span className="lecture-duration">{formatStoredDuration(lecture.duration)}</span>
                           {lecture.video ? (
                             <span className="video-linked-tag" style={{ fontSize: '11px', color: '#10b981', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>Linked</span>
                           ) : (
@@ -494,7 +499,7 @@ const CourseBuilder = () => {
                             >
                               <div>
                                 <strong style={{ display: 'block', fontSize: '14px', color: '#0f172a' }}>{video.title}</strong>
-                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Size: {video.size} | Duration: {video.duration}</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Size: {video.size} | Duration: {formatStoredDuration(video.duration)}</span>
                               </div>
                               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--primary-color)' }}>Select</span>
                             </div>
@@ -516,7 +521,7 @@ const CourseBuilder = () => {
                             >
                               <div>
                                 <strong style={{ display: 'block', fontSize: '14px', color: '#0f172a' }}>{video.title}</strong>
-                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Size: {video.size} | Duration: {video.duration}</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Size: {video.size} | Duration: {formatStoredDuration(video.duration)}</span>
                               </div>
                               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--primary-color)' }}>Select</span>
                             </div>
