@@ -253,10 +253,18 @@
 }
 
 .volume-slider-bar {
-  width: 70px;
+  width: 0;
+  opacity: 0;
   height: 4px;
   accent-color: #ffffff;
   cursor: pointer;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.volume-slider-wrapper:hover .volume-slider-bar,
+.volume-slider-wrapper:focus-within .volume-slider-bar {
+  width: 70px;
+  opacity: 1;
 }
 
 /* Playback Speed selector pills */
@@ -729,6 +737,68 @@
 @media (max-width: 1024px) {
   .classroom-workspace-grid {
     grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (hover: none) {
+  /* On touch devices, controls shouldn't rely solely on hover.
+     Make controls show up on focus, active, or keep a slight persistent opacity. */
+  .custom-video-player-container .video-controls-overlay {
+    opacity: 1;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0) 100%);
+  }
+  .custom-video-player-container:hover .video-controls-overlay {
+    opacity: 1;
+  }
+  .custom-video-player-container .inspect-protection-banner {
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-course-player-page {
+    gap: 16px;
+  }
+
+  .classroom-top-nav {
+    padding-bottom: 12px;
+    gap: 10px;
+  }
+
+  .classroom-course-details h2 {
+    font-size: 18px;
+  }
+
+  .classroom-tabs-viewport-card {
+    padding: 16px;
+  }
+
+  /* Responsive Video Controls overlay - stack to 2 rows to fit smaller screen widths */
+  .video-controls-overlay {
+    padding: 16px 14px 10px 14px;
+    gap: 10px;
+    opacity: 1; /* Keep controls visible or easier to tap on mobile sizes */
+  }
+
+  .controls-buttons-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .left-controls,
+  .right-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .control-btn, .control-btn-sec {
+    padding: 8px; /* Larger touch targets for mobile fingers */
+  }
+
+  .volume-slider-bar {
+    width: 60px;
   }
 }
 
@@ -736,14 +806,92 @@
   .classroom-top-nav {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
+  }
+
+  .classroom-course-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
   .classroom-tabs-bar {
-    gap: 12px;
+    gap: 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .classroom-tabs-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .classroom-tab {
+    padding: 10px 2px;
+    flex-shrink: 0;
   }
 
   .classroom-tab span {
-    font-size: 12.5px;
+    font-size: 13px;
+  }
+
+  /* Curriculum syllabus details wrapper */
+  .curriculum-outline-card {
+    padding: 16px;
+  }
+
+  .lecture-row-item {
+    padding: 12px 8px;
+  }
+
+  .lecture-text-content {
+    padding-left: 8px;
+  }
+
+  /* Allow titles to wrap rather than truncate on mobile for better readability */
+  .lecture-text-content .lecture-title {
+    white-space: normal;
+    font-size: 13px;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Dynamic Watermark - scale down font size on tiny screens */
+  .floating-security-watermark {
+    font-size: 8px !important;
+    padding: 3px 6px !important;
+  }
+
+  /* Scale speed selector down so all 5 options fit on tiny viewports */
+  .speed-pill-btn {
+    padding: 3px 5px !important;
+    font-size: 8.5px !important;
+    border-radius: 8px !important;
+  }
+
+  .speed-selector-group {
+    gap: 2px !important;
+    padding: 2px !important;
+  }
+
+  /* Shrink volume control wrapper components on small mobile screen */
+  .volume-slider-bar {
+    width: 0;
+    transition: width 0.2s ease, opacity 0.2s ease;
+  }
+
+  .volume-slider-wrapper:hover .volume-slider-bar,
+  .volume-slider-wrapper:focus-within .volume-slider-bar {
+    width: 45px !important; /* Slightly narrower slider to fit all controls */
+  }
+
+  .right-controls {
+    gap: 6px !important;
   }
 }
 

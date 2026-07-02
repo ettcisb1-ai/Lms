@@ -30,7 +30,7 @@ const UserLayout = () => {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(window.innerWidth <= 768);
   const [userProfile, setUserProfile] = useState({ name: 'Student', email: '' });
   const [notificationsCount, setNotificationsCount] = useState(0);
   const [ipWarning, setIpWarning] = useState(false);
