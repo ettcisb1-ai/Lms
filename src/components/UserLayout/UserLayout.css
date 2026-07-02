@@ -290,6 +290,10 @@
   margin-left: 72px;
 }
 
+.mobile-logout-btn {
+  display: none;
+}
+
 .user-layout .sidebar-toggle {
   position: absolute;
   top: 26px;
@@ -406,6 +410,23 @@
 
 /* Responsiveness */
 @media (max-width: 768px) {
+  /* Premium backdrop dimming and blur when sidebar drawer is open */
+  .user-layout:not(.collapsed)::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    pointer-events: none;
+    animation: drawerFadeIn 0.25s ease-out;
+  }
+
+  @keyframes drawerFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
   /* Style sidebar as a slide-out drawer overlay */
   .user-sidebar {
     position: fixed;
@@ -429,13 +450,17 @@
   .user-sidebar:not(.collapsed) .logo-text,
   .user-sidebar:not(.collapsed) .nav-item span,
   .user-sidebar:not(.collapsed) .nav-badge,
-  .user-sidebar:not(.collapsed) .user-info,
-  .user-sidebar:not(.collapsed) .logout-btn {
+  .user-sidebar:not(.collapsed) .user-info {
     display: inline-flex !important;
   }
   
   .user-sidebar:not(.collapsed) .user-profile {
     display: flex !important;
+  }
+
+  /* Hide the sidebar footer logout button on mobile since it's shifted to header */
+  .user-sidebar .logout-btn {
+    display: none !important;
   }
 
   /* Main view is full width, does not get squeezed by sidebar */
@@ -447,32 +472,64 @@
     margin-left: 0 !important;
   }
 
-  /* Floating toggle button positioned nicely on mobile screen */
+  /* Solid orange circular toggle button on mobile screen */
   .user-layout .sidebar-toggle {
     display: flex !important; /* Force toggle visibility */
     position: fixed;
     left: 16px;
-    top: 20px;
-    width: 36px;
-    height: 36px;
+    top: 12px; /* Centered in 56px header */
+    width: 32px;
+    height: 32px;
     z-index: 1100; /* Float above header and overlay content */
-    background-color: var(--primary-color, #ff5733);
-    color: white;
-    border: none;
-    border-radius: 50%;
+    background-color: var(--primary-color, #ff5733) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 50% !important;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(255, 87, 51, 0.3);
+    box-shadow: 0 4px 12px rgba(255, 87, 51, 0.35);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
   }
 
-  /* Push the toggle button right next to the drawer edge when it is expanded */
+  .user-layout .sidebar-toggle svg {
+    color: white !important;
+  }
+
+  .user-layout .sidebar-toggle:hover {
+    transform: scale(1.05);
+    background-color: var(--primary-hover, #e04e2b) !important;
+  }
+
+  /* Keep full solid orange but slide it inside the drawer logo area when open */
   .user-layout:not(.collapsed) .sidebar-toggle {
-    left: 266px;
-    background-color: white;
-    color: var(--text-muted);
+    left: 200px;
+    top: 22px; /* Centered in the 76px sidebar logo header */
+    background-color: var(--primary-color, #ff5733) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(255, 87, 51, 0.25);
+  }
+
+  /* Style mobile header logout button in header-right */
+  .mobile-logout-btn {
+    display: flex;
+    position: relative;
+    padding: 8px;
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    border-radius: 50%;
+    color: #475569;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .mobile-logout-btn:hover {
+    background-color: #f8fafc;
+    color: var(--danger-color, #ef4444);
+    border-color: var(--danger-color, #ef4444);
   }
 
   /* Shift user header left block slightly to clear the floating toggle button on mobile */

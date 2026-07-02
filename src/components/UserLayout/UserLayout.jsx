@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, NavLink, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, CreditCard, Settings, Bell,
-  ChevronLeft, ChevronRight, LogOut, ShieldAlert
+  ChevronLeft, ChevronRight, LogOut, ShieldAlert, Menu, X
 } from 'lucide-react';
 import './UserLayout.css';
 import { NOTIFICATION_ENDPOINTS, AUTH_ENDPOINTS } from '../../utils/api';
@@ -107,30 +107,40 @@ const UserLayout = () => {
     return () => window.removeEventListener('lms_notifications_read', handler);
   }, [fetchUnreadCount]);
 
-  // Poll session validity every 30 seconds — auto-logout if force-logged-out by admin
-  useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem('lms_token');
-      if (!token) return;
-      try {
-        const res = await fetch(AUTH_ENDPOINTS.PROFILE, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.status === 401) {
-          localStorage.removeItem('lms_token');
-          localStorage.removeItem('lms_user_role');
-          localStorage.removeItem('lms_user_profile');
-          navigate('/login');
-        }
-      } catch (_) {
-        // network error — don't log out
+  const checkSession = useCallback(async () => {
+    const token = localStorage.getItem('lms_token');
+    if (!token) return;
+    try {
+      const res = await fetch(AUTH_ENDPOINTS.PROFILE, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem('lms_token');
+        localStorage.removeItem('lms_user_role');
+        localStorage.removeItem('lms_user_profile');
+        navigate('/login');
       }
-    };
-
-    const interval = setInterval(checkSession, 30000); // every 30s
-    checkSession(); // also check immediately on mount
-    return () => clearInterval(interval);
+    } catch (_) {
+      // network error — don't log out
+    }
   }, [navigate]);
+
+  // Trigger check immediately on every route transition
+  useEffect(() => {
+    checkSession();
+  }, [location.pathname, checkSession]);
+
+  // Trigger check immediately when browser tab receives focus
+  useEffect(() => {
+    window.addEventListener('focus', checkSession);
+    return () => window.removeEventListener('focus', checkSession);
+  }, [checkSession]);
+
+  // Check periodically (every 5 seconds) to catch forced logout immediately
+  useEffect(() => {
+    const interval = setInterval(checkSession, 5000);
+    return () => clearInterval(interval);
+  }, [checkSession]);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -227,7 +237,7 @@ const UserLayout = () => {
           className="sidebar-toggle"
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         >
-          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {isSidebarCollapsed ? <Menu size={18} /> : <X size={18} />}
         </button>
 
         {/* Dynamic User Header */}
@@ -244,6 +254,9 @@ const UserLayout = () => {
             >
               <Bell size={18} />
               {notificationsCount > 0 && <span className="badge"></span>}
+            </button>
+            <button className="mobile-logout-btn" onClick={handleLogout} title="Logout">
+              <LogOut size={18} />
             </button>
             <div className="plan-pill active-pro">
               {userProfile.subscribed ? 'Premium Active' : 'Free Access Tier'}

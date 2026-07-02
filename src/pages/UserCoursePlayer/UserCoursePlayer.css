@@ -774,31 +774,54 @@
     padding: 16px;
   }
 
-  /* Responsive Video Controls overlay - stack to 2 rows to fit smaller screen widths */
+  /* Responsive Custom Video Controls Overlay - Single Row on Mobile */
   .video-controls-overlay {
-    padding: 16px 14px 10px 14px;
-    gap: 10px;
-    opacity: 1; /* Keep controls visible or easier to tap on mobile sizes */
+    padding: 12px 10px 8px 10px !important;
+    gap: 6px !important;
+    opacity: 1 !important; /* Keep visible on touch */
   }
 
   .controls-buttons-bar {
-    flex-wrap: wrap;
-    gap: 12px;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 4px !important;
   }
 
   .left-controls,
   .right-controls {
-    width: 100%;
-    justify-content: space-between;
-    gap: 12px;
+    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
   }
 
   .control-btn, .control-btn-sec {
-    padding: 8px; /* Larger touch targets for mobile fingers */
+    padding: 4px !important; /* Compact spacing */
   }
 
+  .time-display {
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Hide the volume slider bar entirely on mobile to save horizontal space. Mute can still be toggled. */
   .volume-slider-bar {
-    width: 60px;
+    display: none !important;
+  }
+
+  .speed-selector-group {
+    gap: 2px !important;
+    padding: 2px !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .speed-pill-btn {
+    font-size: 8.5px !important;
+    padding: 3px 5px !important;
+    border-radius: 6px !important;
   }
 }
 
@@ -867,31 +890,25 @@
     padding: 3px 6px !important;
   }
 
-  /* Scale speed selector down so all 5 options fit on tiny viewports */
+  /* Scale speed selector down further so all 5 options fit on tiny viewports in single row */
   .speed-pill-btn {
-    padding: 3px 5px !important;
-    font-size: 8.5px !important;
-    border-radius: 8px !important;
+    padding: 2px 3px !important;
+    font-size: 7.5px !important;
+    border-radius: 5px !important;
   }
 
   .speed-selector-group {
-    gap: 2px !important;
-    padding: 2px !important;
+    gap: 1px !important;
+    padding: 1px !important;
   }
 
-  /* Shrink volume control wrapper components on small mobile screen */
-  .volume-slider-bar {
-    width: 0;
-    transition: width 0.2s ease, opacity 0.2s ease;
-  }
-
-  .volume-slider-wrapper:hover .volume-slider-bar,
-  .volume-slider-wrapper:focus-within .volume-slider-bar {
-    width: 45px !important; /* Slightly narrower slider to fit all controls */
-  }
-
+  .left-controls,
   .right-controls {
-    gap: 6px !important;
+    gap: 3px !important;
+  }
+
+  .time-display {
+    font-size: 9px !important;
   }
 }
 
