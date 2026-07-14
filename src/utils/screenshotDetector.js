@@ -7,6 +7,73 @@
 export const initScreenshotDetection = () => {
   console.log("[SECURITY_DETECTOR] Initializing background security listeners...");
 
+  // Create or retrieve black overlay
+  let overlay = document.getElementById('security-black-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'security-black-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.backgroundColor = '#000000';
+    overlay.style.zIndex = '99999999';
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'auto'; // Block clicks when displayed
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.flexDirection = 'column';
+    overlay.style.color = '#ffffff';
+    overlay.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    overlay.style.textAlign = 'center';
+    overlay.style.padding = '30px';
+    overlay.style.boxSizing = 'border-box';
+
+    // Icon/Emoji indicator
+    const icon = document.createElement('div');
+    icon.innerHTML = '⚠️';
+    icon.style.fontSize = '48px';
+    icon.style.marginBottom = '16px';
+    overlay.appendChild(icon);
+
+    // Title
+    const title = document.createElement('div');
+    title.innerText = 'Content Protected';
+    title.style.fontSize = '22px';
+    title.style.fontWeight = 'bold';
+    title.style.marginBottom = '10px';
+    overlay.appendChild(title);
+
+    // Message
+    const subText = document.createElement('div');
+    subText.innerText = 'Screenshots and screen recordings are disabled on this portal to protect copyrighted course content.';
+    subText.style.fontSize = '14px';
+    subText.style.color = '#a0aec0';
+    subText.style.maxWidth = '400px';
+    subText.style.lineHeight = '1.5';
+    overlay.appendChild(subText);
+
+    document.body.appendChild(overlay);
+  }
+
+  const showOverlay = () => {
+    if (overlay) {
+      overlay.style.display = 'flex';
+    }
+  };
+
+  const hideOverlay = () => {
+    if (overlay) {
+      // Delay slightly to ensure screenshot/recording registers the black overlay first
+      setTimeout(() => {
+        if (document.visibilityState === 'visible' && document.hasFocus()) {
+          overlay.style.display = 'none';
+        }
+      }, 500);
+    }
+  };
+
   const triggerBlock = (source, details) => {
     console.warn(`[SECURITY_DETECTOR] [BLOCKED] Source: ${source} | Details:`, details);
   };
@@ -27,7 +94,9 @@ export const initScreenshotDetection = () => {
     if (e.key === 'PrintScreen' || e.keyCode === 44 || e.code === 'PrintScreen') {
       triggerBlock('PrintScreen Key', keyData);
       overwriteClipboard();
+      showOverlay();
       blockEvent(e);
+      setTimeout(hideOverlay, 1500);
       return false;
     }
 
@@ -106,18 +175,25 @@ export const initScreenshotDetection = () => {
     }
   };
 
-  // 2. Focus Loss & Gain Listeners (Logging only)
+  // 2. Focus Loss & Gain Listeners (Trigger Black Screen)
   const handleBlur = () => {
-    console.log("[SECURITY_DETECTOR] Window lost focus (blur event fired)");
+    console.log("[SECURITY_DETECTOR] Window lost focus (blur event fired) - Blacking screen");
+    showOverlay();
   };
 
   const handleFocus = () => {
     console.log("[SECURITY_DETECTOR] Window regained focus (focus event fired)");
+    hideOverlay();
   };
 
-  // 3. Tab Visibility Change Listener (Logging only)
+  // 3. Tab Visibility Change Listener
   const handleVisibilityChange = () => {
     console.log(`[SECURITY_DETECTOR] Document visibilityState changed: ${document.visibilityState}`);
+    if (document.visibilityState === 'hidden') {
+      showOverlay();
+    } else {
+      hideOverlay();
+    }
   };
 
   // 4. Print Event Listeners (Triggers before browser prints page)
@@ -152,5 +228,8 @@ export const initScreenshotDetection = () => {
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     window.removeEventListener('beforeprint', handleBeforePrint);
     document.removeEventListener('copy', handleCopy);
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
   };
 };
