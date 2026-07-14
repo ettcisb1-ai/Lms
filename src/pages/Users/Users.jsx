@@ -94,7 +94,7 @@ const Users = () => {
 
   // Device limit modal
   const [deviceLimitUser, setDeviceLimitUser] = useState(null);
-  const [deviceLimitValue, setDeviceLimitValue] = useState(1);
+  const [deviceLimitValue, setDeviceLimitValue] = useState(2);
   const [savingDeviceLimit, setSavingDeviceLimit] = useState(false);
 
   const fetchAvailableCourses = async () => {
@@ -151,7 +151,7 @@ const Users = () => {
           courses: u.courses || [],
           activityLog: u.activityLog || [],
           lastLogin: getRealLastLogin(u.activityLog),
-          deviceLimit: u.deviceLimit || 1,
+          deviceLimit: u.deviceLimit || 2,
         }));
         setUsers(mappedUsers);
       }
@@ -428,7 +428,7 @@ const Users = () => {
   const openDeviceLimitModal = (e, user) => {
     e.stopPropagation();
     setDeviceLimitUser(user);
-    setDeviceLimitValue(user.deviceLimit || 1);
+    setDeviceLimitValue(user.deviceLimit || 2);
     setActiveDropdown(null);
   };
 
