@@ -1,9 +1,9 @@
 // Run on Local:
-// export const API_BASE_URL = 'http://localhost:3000';
+export const API_BASE_URL = 'http://localhost:3000';
 
 // Run on Vercel:
 // export const API_BASE_URL = 'https://backend-gules-one-88.vercel.app';
-export const API_BASE_URL = 'https://backend-jyiwolngi-ettc.vercel.app';
+// export const API_BASE_URL = 'https://backend-jyiwolngi-ettc.vercel.app';
 
 export const BASE_URL = API_BASE_URL;
 

@@ -93,10 +93,14 @@ const UserCoursePlayer = () => {
 
   // ── Watermark ────────────────────────────────────────────────────────────────
   const [watermarkPos, setWatermarkPos] = useState({ top: 10, left: 10 });
+  // Second watermark at a diagonal-opposite position (harder to crop both out)
+  const [watermarkPos2, setWatermarkPos2] = useState({ top: 65, left: 55 });
   // Session ID — unique per page load, used to identify leaked recordings
   const [sessionId] = useState(() => `SID-${Math.random().toString(36).substr(2, 7).toUpperCase()}`);
   // Watermark timestamp — updates every minute
   const [watermarkTime, setWatermarkTime] = useState('');
+  // Video blur state — active when tab is hidden / window loses focus
+  const [isVideoBlurred, setIsVideoBlurred] = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const videoEl = useRef(null);
@@ -234,35 +238,41 @@ const UserCoursePlayer = () => {
   }, []);
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // FR-31: Screen recording detection (browser-based heuristics for Web)
+  // FR-31: Tab-switch / focus-loss → blur video + pause + warning banner
   // ══════════════════════════════════════════════════════════════════════════════
   useEffect(() => {
-    const checkScreenRecording = () => {
-      if (document.hidden) {
+    const onHide = () => {
+      setIsVideoBlurred(true);
+      setScreenRecordWarning(true);
+      if (videoSecurity?.antiScreenRecording) {
         pauseVideoSecurely();
-        setScreenRecordWarning(true);
-        return;
       }
+    };
+
+    const onShow = () => {
+      setIsVideoBlurred(false);
       setScreenRecordWarning(false);
     };
 
-    const handleBlur = () => {
-      if (videoSecurity?.antiScreenRecording) {
-        pauseVideoSecurely();
-        setScreenRecordWarning(true);
-      }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') onHide(); else onShow();
     };
-    const handleFocus = () => setScreenRecordWarning(false);
 
-    document.addEventListener('visibilitychange', checkScreenRecording);
-    window.addEventListener('blur', handleBlur);
+    const handleBlur  = () => onHide();
+    const handleFocus = () => onShow();
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur',  handleBlur);
     window.addEventListener('focus', handleFocus);
 
-    screenRecordCheckRef.current = setInterval(checkScreenRecording, 3000);
+    // Periodic check — catches edge cases where events are missed
+    screenRecordCheckRef.current = setInterval(() => {
+      if (document.hidden) onHide();
+    }, 3000);
 
     return () => {
-      document.removeEventListener('visibilitychange', checkScreenRecording);
-      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur',  handleBlur);
       window.removeEventListener('focus', handleFocus);
       clearInterval(screenRecordCheckRef.current);
     };
@@ -277,6 +287,7 @@ const UserCoursePlayer = () => {
 
   // ══════════════════════════════════════════════════════════════════════════════
   // FR-31: Watermark — position jitter every 4s, time update every 60s
+  // Second watermark moves on a separate offset interval for dual coverage
   // ══════════════════════════════════════════════════════════════════════════════
   useEffect(() => {
     const updateTime = () =>
@@ -288,9 +299,15 @@ const UserCoursePlayer = () => {
 
   useEffect(() => {
     const jitter = setInterval(() => {
+      // Primary watermark — upper region
       setWatermarkPos({
-        top: Math.floor(Math.random() * 78) + 5,
-        left: Math.floor(Math.random() * 68) + 5,
+        top:  Math.floor(Math.random() * 35) + 5,
+        left: Math.floor(Math.random() * 55) + 5,
+      });
+      // Secondary watermark — lower region (diagonal from primary)
+      setWatermarkPos2({
+        top:  Math.floor(Math.random() * 30) + 58,
+        left: Math.floor(Math.random() * 40) + 45,
       });
     }, 4000);
     return () => clearInterval(jitter);
@@ -398,7 +415,7 @@ const UserCoursePlayer = () => {
   }, [secureStreamUrl, isHLS, isDrm, licenseServerUrl]);
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // FR-30: Prevent right-click / download keyboard shortcuts
+  // FR-30: Prevent right-click / download keyboard shortcuts / PiP
   // ══════════════════════════════════════════════════════════════════════════════
   useEffect(() => {
     const blockContextMenu = (e) => {
@@ -421,12 +438,19 @@ const UserCoursePlayer = () => {
       }
     };
 
+    // Exit picture-in-picture immediately if the user triggers it
+    const handleEnterPiP = () => {
+      document.exitPictureInPicture().catch(() => {});
+    };
+
     document.addEventListener('contextmenu', blockContextMenu);
     document.addEventListener('keydown', blockKeyShortcuts);
+    document.addEventListener('enterpictureinpicture', handleEnterPiP, true);
 
     return () => {
       document.removeEventListener('contextmenu', blockContextMenu);
       document.removeEventListener('keydown', blockKeyShortcuts);
+      document.removeEventListener('enterpictureinpicture', handleEnterPiP, true);
     };
   }, []);
 
@@ -819,7 +843,7 @@ const UserCoursePlayer = () => {
             {/* Single video element — src managed by HLS effect, never set via JSX prop */}
             <video
               ref={videoEl}
-              className="secure-video-element"
+              className={`secure-video-element${isVideoBlurred ? ' video-is-blurred' : ''}`}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={handleVideoEnded}
@@ -872,6 +896,29 @@ const UserCoursePlayer = () => {
               <span>{watermarkTime}</span>
               <span>{sessionId}</span>
             </div>
+
+            {/* FR-31: Second watermark at a diagonal-opposite position — harder to crop both */}
+            <div
+              className="floating-security-watermark watermark-secondary"
+              style={{ top: `${watermarkPos2.top}%`, left: `${watermarkPos2.left}%` }}
+              aria-hidden="true"
+            >
+              <span>{userProfile.email || userProfile.name}</span>
+              <span>{sessionId}</span>
+            </div>
+
+            {/* FR-31: Tab-switch / focus-loss blur overlay */}
+            {isVideoBlurred && (
+              <div className="video-blur-overlay" aria-hidden="true">
+                <div className="video-blur-message">
+                  <span style={{ fontSize: 28, marginBottom: 8 }}>🔒</span>
+                  <span>Playback paused</span>
+                  <span style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                    Return to this tab to resume
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* FR-33: Custom player controls */}
             <div className="video-controls-overlay">

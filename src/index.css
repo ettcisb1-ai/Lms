@@ -60,3 +60,37 @@ button {
     transform: rotate(360deg);
   }
 }
+
+
+/* ── Global Security Rules ───────────────────────────────────────────────── */
+
+/* Disable text selection everywhere except form fields */
+*:not(input):not(textarea):not([contenteditable="true"]) {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Disable dragging of media elements */
+img,
+video,
+canvas {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Re-enable pointer events on player canvases */
+.custom-video-player-container canvas,
+.vs-player-container canvas {
+  pointer-events: auto;
+}

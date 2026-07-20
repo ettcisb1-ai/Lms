@@ -1,235 +1,239 @@
 /**
- * Security Screenshot & Key Detection Module (Opaque Mode)
- * Logs and blocks developer tools, print shortcuts, context menus, and copy actions
- * without rendering any full-screen blackout overlays.
+ * Security Screenshot & Key Detection Module
+ *
+ * Scope:
+ *  - Black overlay fires ONLY when the user is on a course-player page
+ *    (/dashboard/courses/:id).  All other pages get silent key-blocking only.
+ *  - Copy is intercepted silently (no alert) — avoids breaking form usage.
+ *  - Print is fully blacked out via a dynamically injected <style> tag.
+ *  - picture-in-picture API is blocked at the document level.
  */
 
-export const initScreenshotDetection = () => {
-  console.log("[SECURITY_DETECTOR] Initializing background security listeners...");
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-  // Create or retrieve black overlay
-  let overlay = document.getElementById('security-black-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'security-black-overlay';
-    overlay.style.position = 'fixed';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.width = '100vw';
-    overlay.style.height = '100vh';
-    overlay.style.backgroundColor = '#000000';
-    overlay.style.zIndex = '99999999';
-    overlay.style.display = 'none';
-    overlay.style.pointerEvents = 'auto'; // Block clicks when displayed
-    overlay.style.justifyContent = 'center';
-    overlay.style.alignItems = 'center';
-    overlay.style.flexDirection = 'column';
-    overlay.style.color = '#ffffff';
-    overlay.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-    overlay.style.textAlign = 'center';
-    overlay.style.padding = '30px';
-    overlay.style.boxSizing = 'border-box';
+const isOnPlayerPage = () =>
+  /^\/dashboard\/courses\/[^/]+/.test(window.location.pathname);
 
-    // Icon/Emoji indicator
-    const icon = document.createElement('div');
-    icon.innerHTML = '⚠️';
-    icon.style.fontSize = '48px';
-    icon.style.marginBottom = '16px';
-    overlay.appendChild(icon);
+const blockEvent = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+};
 
-    // Title
-    const title = document.createElement('div');
-    title.innerText = 'Content Protected';
-    title.style.fontSize = '22px';
-    title.style.fontWeight = 'bold';
-    title.style.marginBottom = '10px';
-    overlay.appendChild(title);
+const overwriteClipboard = () => {
+  try {
+    navigator.clipboard.writeText(
+      'Content protected — screenshots are disabled on this portal.'
+    );
+  } catch (_) {
+    /* clipboard API may be unavailable in some contexts */
+  }
+};
 
-    // Message
-    const subText = document.createElement('div');
-    subText.innerText = 'Screenshots and screen recordings are disabled on this portal to protect copyrighted course content.';
-    subText.style.fontSize = '14px';
-    subText.style.color = '#a0aec0';
-    subText.style.maxWidth = '400px';
-    subText.style.lineHeight = '1.5';
-    overlay.appendChild(subText);
+// ── print blackout style (injected once) ─────────────────────────────────────
 
-    document.body.appendChild(overlay);
+const injectPrintStyle = () => {
+  if (document.getElementById('lms-print-block-style')) return;
+  const style = document.createElement('style');
+  style.id = 'lms-print-block-style';
+  style.textContent = `
+    @media print {
+      body * { visibility: hidden !important; }
+      body::before {
+        content: 'Printing this content is not permitted.';
+        visibility: visible !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        inset: 0;
+        font-size: 24px;
+        font-weight: bold;
+        color: #000;
+        background: #fff;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+// ── overlay (only shown on player pages) ─────────────────────────────────────
+
+const createOverlay = () => {
+  let el = document.getElementById('security-black-overlay');
+  if (el) return el;
+
+  el = document.createElement('div');
+  el.id = 'security-black-overlay';
+  Object.assign(el.style, {
+    position: 'fixed',
+    top: '0',
+    left: '0',
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: '#000000',
+    zIndex: '99999999',
+    display: 'none',
+    pointerEvents: 'auto',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'column',
+    color: '#ffffff',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    textAlign: 'center',
+    padding: '30px',
+    boxSizing: 'border-box',
+  });
+
+  const icon = document.createElement('div');
+  icon.innerHTML = '🛡️';
+  icon.style.cssText = 'font-size:52px;margin-bottom:18px';
+  el.appendChild(icon);
+
+  const title = document.createElement('div');
+  title.innerText = 'Content Protected';
+  title.style.cssText = 'font-size:22px;font-weight:bold;margin-bottom:10px';
+  el.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.innerText =
+    'Screenshots and screen recordings are not permitted on this portal.';
+  sub.style.cssText =
+    'font-size:14px;color:#a0aec0;max-width:400px;line-height:1.6';
+  el.appendChild(sub);
+
+  document.body.appendChild(el);
+  return el;
+};
+
+const showOverlay = () => {
+  if (!isOnPlayerPage()) return;
+  const overlay = createOverlay();
+  overlay.style.display = 'flex';
+};
+
+let hideTimer = null;
+const hideOverlay = () => {
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    if (document.visibilityState === 'visible' && document.hasFocus()) {
+      const overlay = document.getElementById('security-black-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+  }, 400);
+};
+
+// ── keyboard handler ──────────────────────────────────────────────────────────
+
+const handleKeyDown = (e) => {
+  // PrintScreen — overwrite clipboard + overlay
+  if (e.key === 'PrintScreen' || e.keyCode === 44 || e.code === 'PrintScreen') {
+    overwriteClipboard();
+    showOverlay();
+    blockEvent(e);
+    setTimeout(hideOverlay, 1800);
+    return;
   }
 
-  const showOverlay = () => {
-    if (overlay) {
-      overlay.style.display = 'flex';
-    }
-  };
+  const ctrl = e.ctrlKey || e.metaKey;
 
-  const hideOverlay = () => {
-    if (overlay) {
-      // Delay slightly to ensure screenshot/recording registers the black overlay first
-      setTimeout(() => {
-        if (document.visibilityState === 'visible' && document.hasFocus()) {
-          overlay.style.display = 'none';
-        }
-      }, 500);
-    }
-  };
+  // DevTools & inspect shortcuts
+  if (e.key === 'F12' || e.keyCode === 123) { blockEvent(e); return; }
+  if (ctrl && e.shiftKey && ['i','I','j','J','c','C'].includes(e.key)) {
+    blockEvent(e); return;
+  }
 
-  const triggerBlock = (source, details) => {
-    console.warn(`[SECURITY_DETECTOR] [BLOCKED] Source: ${source} | Details:`, details);
-  };
+  // Print / Save / View-Source
+  if (ctrl && ['p','P','s','S','u','U'].includes(e.key)) {
+    blockEvent(e); return;
+  }
 
-  // 1. Keyboard Event Listener
-  const handleKeyDown = (e) => {
-    const keyData = {
-      key: e.key,
-      code: e.code,
-      keyCode: e.keyCode,
-      ctrlKey: e.ctrlKey,
-      metaKey: e.metaKey,
-      shiftKey: e.shiftKey,
-      altKey: e.altKey
-    };
+  // Ctrl+A / Ctrl+C / Ctrl+V / Ctrl+X — only block outside form elements
+  if (ctrl && ['a','A','c','C','v','V','x','X'].includes(e.key)) {
+    const tag = document.activeElement?.tagName;
+    const editable = document.activeElement?.isContentEditable;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return; // allow in forms
+    blockEvent(e);
+  }
+};
 
-    // Block PrintScreen key
-    if (e.key === 'PrintScreen' || e.keyCode === 44 || e.code === 'PrintScreen') {
-      triggerBlock('PrintScreen Key', keyData);
-      overwriteClipboard();
-      showOverlay();
-      blockEvent(e);
-      setTimeout(hideOverlay, 1500);
-      return false;
-    }
+const handleKeyUp = (e) => {
+  if (e.key === 'PrintScreen' || e.keyCode === 44 || e.code === 'PrintScreen') {
+    overwriteClipboard();
+    blockEvent(e);
+  }
+};
 
-    // Block Ctrl/Cmd + P (Print)
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P' || e.keyCode === 80)) {
-      triggerBlock('Print Shortcut (Ctrl/Cmd + P)', keyData);
-      blockEvent(e);
-      return false;
-    }
+// ── tab visibility & focus ────────────────────────────────────────────────────
 
-    // Block Ctrl/Cmd + S (Save Page)
-    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
-      triggerBlock('Save Shortcut (Ctrl/Cmd + S)', keyData);
-      blockEvent(e);
-      return false;
-    }
-
-    // Block Ctrl/Cmd + U (View Source)
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
-      triggerBlock('View Source Shortcut (Ctrl/Cmd + U)', keyData);
-      blockEvent(e);
-      return false;
-    }
-
-    // Block F12 (DevTools)
-    if (e.key === 'F12' || e.keyCode === 123 || e.code === 'F12') {
-      triggerBlock('F12 DevTools Key', keyData);
-      blockEvent(e);
-      return false;
-    }
-
-    // Block DevTools Shortcuts (Ctrl+Shift+I / J / C or Cmd+Opt+I / J / C)
-    if (
-      (e.ctrlKey || e.metaKey) &&
-      e.shiftKey &&
-      ['i', 'I', 'j', 'J', 'c', 'C'].includes(e.key)
-    ) {
-      triggerBlock('DevTools Shortcut (Ctrl/Cmd + Shift + I/J/C)', keyData);
-      blockEvent(e);
-      return false;
-    }
-  };
-
-  const handleKeyUp = (e) => {
-    const keyData = {
-      key: e.key,
-      code: e.code,
-      keyCode: e.keyCode,
-      ctrlKey: e.ctrlKey,
-      metaKey: e.metaKey,
-      shiftKey: e.shiftKey,
-      altKey: e.altKey
-    };
-
-    if (e.key === 'PrintScreen' || e.keyCode === 44 || e.code === 'PrintScreen') {
-      triggerBlock('PrintScreen KeyUp', keyData);
-      overwriteClipboard();
-      blockEvent(e);
-    }
-  };
-
-  // Helper to block events
-  const blockEvent = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-  };
-
-  // Helper to overwrite clipboard buffer
-  const overwriteClipboard = () => {
-    try {
-      navigator.clipboard.writeText("Screenshots are disabled on this portal for security reasons.");
-      console.log("[SECURITY_DETECTOR] Clipboard successfully cleared/overwritten.");
-    } catch (err) {
-      console.warn("[SECURITY_DETECTOR] Clipboard overwrite failed:", err.message);
-    }
-  };
-
-  // 2. Focus Loss & Gain Listeners (Trigger Black Screen)
-  const handleBlur = () => {
-    console.log("[SECURITY_DETECTOR] Window lost focus (blur event fired) - Blacking screen");
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'hidden') {
     showOverlay();
-  };
-
-  const handleFocus = () => {
-    console.log("[SECURITY_DETECTOR] Window regained focus (focus event fired)");
+  } else {
     hideOverlay();
-  };
+  }
+};
 
-  // 3. Tab Visibility Change Listener
-  const handleVisibilityChange = () => {
-    console.log(`[SECURITY_DETECTOR] Document visibilityState changed: ${document.visibilityState}`);
-    if (document.visibilityState === 'hidden') {
-      showOverlay();
-    } else {
-      hideOverlay();
-    }
-  };
+const handleBlur  = () => showOverlay();
+const handleFocus = () => hideOverlay();
 
-  // 4. Print Event Listeners (Triggers before browser prints page)
-  const handleBeforePrint = () => {
-    console.warn("[SECURITY_DETECTOR] Print dialog requested (beforeprint event fired)");
-  };
+// ── copy ─────────────────────────────────────────────────────────────────────
+// Silent intercept — no alert; prevents breaking clipboard inside forms
+const handleCopy = (e) => {
+  const tag = e.target?.tagName;
+  const editable = e.target?.isContentEditable;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return; // allow in forms
+  e.preventDefault();
+};
 
-  // 5. Copy Command Listener
-  const handleCopy = (e) => {
-    console.warn("[SECURITY_DETECTOR] Copy action intercepted");
-    e.preventDefault();
-    alert("Copying text is disabled on this portal to protect copyrighted course content.");
-    return false;
-  };
+// ── print ─────────────────────────────────────────────────────────────────────
+const handleBeforePrint = () => {
+  showOverlay();
+};
+const handleAfterPrint = () => {
+  hideOverlay();
+};
 
-  // Attach all window/document level listeners
-  window.addEventListener('keydown', handleKeyDown, true);
-  window.addEventListener('keyup', handleKeyUp, true);
-  window.addEventListener('blur', handleBlur);
-  window.addEventListener('focus', handleFocus);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+// ── picture-in-picture block ──────────────────────────────────────────────────
+const handleEnterPiP = (e) => {
+  e.preventDefault();
+  const vid = document.querySelector('video.secure-video-element');
+  if (vid && document.pictureInPictureElement) {
+    document.exitPictureInPicture().catch(() => {});
+  }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Public API
+// ═════════════════════════════════════════════════════════════════════════════
+
+export const initScreenshotDetection = () => {
+  injectPrintStyle();
+
+  window.addEventListener('keydown', handleKeyDown, { capture: true });
+  window.addEventListener('keyup',   handleKeyUp,   { capture: true });
+  window.addEventListener('blur',    handleBlur);
+  window.addEventListener('focus',   handleFocus);
   window.addEventListener('beforeprint', handleBeforePrint);
-  document.addEventListener('copy', handleCopy);
+  window.addEventListener('afterprint',  handleAfterPrint);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  document.addEventListener('copy', handleCopy, { capture: true });
 
-  // Return clean-up function
+  // Block PiP at document level
+  document.addEventListener('enterpictureinpicture', handleEnterPiP, true);
+
   return () => {
-    console.log("[SECURITY_DETECTOR] Cleaning up security listeners...");
-    window.removeEventListener('keydown', handleKeyDown, true);
-    window.removeEventListener('keyup', handleKeyUp, true);
-    window.removeEventListener('blur', handleBlur);
-    window.removeEventListener('focus', handleFocus);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('keydown', handleKeyDown, { capture: true });
+    window.removeEventListener('keyup',   handleKeyUp,   { capture: true });
+    window.removeEventListener('blur',    handleBlur);
+    window.removeEventListener('focus',   handleFocus);
     window.removeEventListener('beforeprint', handleBeforePrint);
-    document.removeEventListener('copy', handleCopy);
-    if (overlay && overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
+    window.removeEventListener('afterprint',  handleAfterPrint);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('copy', handleCopy, { capture: true });
+    document.removeEventListener('enterpictureinpicture', handleEnterPiP, true);
+
+    const overlay = document.getElementById('security-black-overlay');
+    if (overlay?.parentNode) overlay.parentNode.removeChild(overlay);
   };
 };
