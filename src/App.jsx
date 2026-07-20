@@ -17,6 +17,8 @@ import Notifications from './pages/Notifications/Notifications'
 import Subscriptions from './pages/Subscriptions/Subscriptions'
 import Analytics from './pages/Analytics/Analytics'
 
+
+
 import Progress from './pages/Progress/Progress'
 // import Reports from './pages/Reports/Reports'
 
