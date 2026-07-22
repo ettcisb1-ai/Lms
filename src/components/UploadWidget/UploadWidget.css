@@ -1,0 +1,134 @@
+/* ── Floating minimized upload widget ───────────────────────────────────────── */
+.upload-mini-widget {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  min-width: 300px;
+  max-width: 360px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+  animation: miniWidgetIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.upload-mini-widget:hover {
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+}
+
+.upload-mini-widget.complete {
+  border-color: #6ee7b7;
+  background: #f0fdf4;
+}
+
+@keyframes miniWidgetIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+
+/* ── Left side ─────────────────────────────────────────────────────────────── */
+.mini-widget-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-spin  { color: var(--primary-color, #e74c3c); flex-shrink: 0; }
+.mini-check { color: #10b981; flex-shrink: 0; }
+
+.mini-widget-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mini-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a202c;
+  white-space: nowrap;
+}
+
+.mini-filename {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+/* ── Right side ────────────────────────────────────────────────────────────── */
+.mini-widget-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Circular SVG progress ring */
+.mini-progress-ring {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-ring-svg {
+  width: 40px;
+  height: 40px;
+}
+
+.mini-ring-svg circle:last-child {
+  transition: stroke-dasharray 0.35s ease;
+}
+
+.mini-pct {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 800;
+  color: #1a202c;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Close / dismiss button */
+.mini-close-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.mini-close-btn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.mini-close-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

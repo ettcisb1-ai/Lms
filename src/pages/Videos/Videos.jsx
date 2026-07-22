@@ -7,6 +7,7 @@ import {
 import './Videos.css';
 import { VIDEO_ENDPOINTS, CATEGORY_ENDPOINTS, COURSE_ENDPOINTS, UPLOAD_ENDPOINT, formatStoredDuration } from '../../utils/api';
 import { ShimmerVideos } from '../../components/Shimmer/Shimmer';
+import { useUpload } from '../../context/UploadContext';
 
 // ─── Dropdown Menu Component ─────────────────────────────────────────────────
 const VideoCardMenu = ({ video, onEdit, onDelete, onSettings }) => {
@@ -350,17 +351,22 @@ const Videos = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Upload modal state
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [newVideoTitle, setNewVideoTitle] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [selectedFile, setSelectedFile] = useState(null);
+  // ── Upload state comes from global context (survives navigation) ───────────
+  const {
+    isUploadModalOpen, setIsUploadModalOpen,
+    isMinimized, setIsMinimized,
+    uploading,
+    uploadProgress,
+    selectedFile, setSelectedFile,
+    newVideoTitle, setNewVideoTitle,
+    selectedCategory, setSelectedCategory,
+    selectedCourse, setSelectedCourse,
+    openUploadModal,
+    startUpload,
+    resetUpload,
+  } = useUpload();
 
-  // Action modals
+  // Action modals (these are page-local — fine to stay here)
   const [editingVideo, setEditingVideo] = useState(null);
   const [deletingVideo, setDeletingVideo] = useState(null);
   const [securityVideo, setSecurityVideo] = useState(null);
@@ -393,157 +399,26 @@ const Videos = () => {
     ? courses.filter(c => (c.category?._id || c.category) === selectedCategory)
     : courses;
 
-  const resetModal = () => {
-    setIsUploadModalOpen(false);
-    setNewVideoTitle('');
-    setSelectedCategory('');
-    setSelectedCourse('');
-    setSelectedFile(null);
-    setUploading(false);
-    setUploadProgress(0);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = () => setIsDragging(false);
-  
-  const handleDrop = (e) => { 
-    e.preventDefault(); 
-    setIsDragging(false); 
-    const f = e.dataTransfer.files[0]; 
-    if (f) {
-      if (f.size > 500 * 1024 * 1024) {
-        alert('Video file size must be under 500MB.');
-        return;
-      }
-      setSelectedFile(f); 
-    }
-  };
-
+  // drag-and-drop state (UI only — file stored in context)
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileSelect = (e) => { 
-    const f = e.target.files[0]; 
+  const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = ()  => setIsDragging(false);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const f = e.dataTransfer.files[0];
     if (f) {
-      if (f.size > 500 * 1024 * 1024) {
-        alert('Video file size must be under 500MB.');
-        return;
-      }
-      setSelectedFile(f); 
+      if (f.size > 500 * 1024 * 1024) { alert('Video file size must be under 500MB.'); return; }
+      setSelectedFile(f);
     }
   };
-
-  const handleSave = () => {
-    if (!newVideoTitle.trim()) { alert('Please enter a video title.'); return; }
-    if (!selectedCategory) { alert('Please select a category.'); return; }
-    if (!selectedCourse) { alert('Please select a course.'); return; }
-    if (!selectedFile) { alert('Please select a video file to upload.'); return; }
-    handleRealUpload(selectedFile);
-  };
-
-  const handleRealUpload = async (file) => {
-    setUploading(true);
-    setUploadProgress(5);
-    const token = localStorage.getItem('lms_token');
-
-    // ── Read duration from file locally before uploading ──────────────────────
-    const getVideoDuration = (f) => new Promise((resolve) => {
-      const url = URL.createObjectURL(f);
-      const vid = document.createElement('video');
-      vid.preload = 'metadata';
-      vid.onloadedmetadata = () => {
-        URL.revokeObjectURL(url);
-        const secs = vid.duration;
-        if (!secs || !isFinite(secs)) { resolve('0:00'); return; }
-        const h = Math.floor(secs / 3600);
-        const m = Math.floor((secs % 3600) / 60);
-        const s = Math.floor(secs % 60);
-        if (h > 0) {
-          resolve(`${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
-        } else {
-          resolve(`${m}:${String(s).padStart(2, '0')}`);
-        }
-      };
-      vid.onerror = () => { URL.revokeObjectURL(url); resolve('0:00'); };
-      vid.src = url;
-    });
-
-    try {
-      // ── Step 1: Get a presigned S3 PUT URL from the backend ────────────────
-      const s3SigEndpoint = UPLOAD_ENDPOINT.endsWith('/upload')
-        ? UPLOAD_ENDPOINT.replace(/\/upload$/, '/upload/s3-signature')
-        : `${UPLOAD_ENDPOINT}/s3-signature`;
-
-      // Read duration and get presigned URL in parallel
-      const [duration, sigRes] = await Promise.all([
-        getVideoDuration(file),
-        fetch(
-          `${s3SigEndpoint}?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        ),
-      ]);
-
-      const sigData = await sigRes.json();
-      if (!sigRes.ok || !sigData.success) {
-        throw new Error(sigData.message || 'Failed to get S3 upload URL from server');
-      }
-
-      setUploadProgress(10);
-
-      // ── Step 2: PUT the file directly to S3 (no Vercel size limit) ─────────
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', sigData.presignedUrl, true);
-        xhr.setRequestHeader('Content-Type', file.type);
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 78) + 10;
-            setUploadProgress(Math.min(percent, 88));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`S3 upload failed (${xhr.status}): ${xhr.responseText}`));
-        };
-        xhr.onerror = () => reject(new Error('S3 network connection failed.'));
-        xhr.send(file);
-      });
-
-      setUploadProgress(90);
-
-      const formatBytes = (bytes) => {
-        if (!bytes) return 'Unknown size';
-        if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(1)} GB`;
-        return `${(bytes / 1048576).toFixed(1)} MB`;
-      };
-
-      // ── Step 3: Save the video record in MongoDB ───────────────────────────
-      const createRes = await fetch(VIDEO_ENDPOINTS.CREATE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          title: newVideoTitle,
-          videoUrl: sigData.publicUrl,
-          thumbnail: '',
-          category: selectedCategory,
-          course: selectedCourse,
-          size: formatBytes(file.size),
-          duration,                     // ← real duration read from file
-          status: 'Published',
-        }),
-      });
-
-      setUploadProgress(100);
-      const createResult = await createRes.json();
-      if (!createRes.ok) throw new Error(createResult.message || 'Saving video details failed.');
-      if (createResult.success) { setTimeout(() => { resetModal(); fetchData(); }, 800); }
-
-    } catch (err) {
-      console.error('Video upload error:', err);
-      alert(err.message || 'Failed to upload video.');
-      setUploading(false);
+  const handleFileSelect = (e) => {
+    const f = e.target.files[0];
+    if (f) {
+      if (f.size > 500 * 1024 * 1024) { alert('Video file size must be under 500MB.'); return; }
+      setSelectedFile(f);
     }
   };
 
@@ -572,7 +447,7 @@ const Videos = () => {
           <h2 className="page-title">Video Library</h2>
           <p className="page-subtitle">Upload, manage, and secure your video content.</p>
         </div>
-        <button className="btn-primary" onClick={() => setIsUploadModalOpen(true)}>
+        <button className="btn-primary" onClick={() => openUploadModal(fetchData)}>
           <Plus size={16} /><span>Add Video</span>
         </button>
       </div>
@@ -652,41 +527,64 @@ const Videos = () => {
       )}
 
       {/* ── Upload Modal ──────────────────────────────────────────────────────── */}
-      {isUploadModalOpen && (
+      {isUploadModalOpen && !isMinimized && (
         <div className="upload-modal-backdrop">
           <div className="upload-modal">
             <div className="modal-header">
               <h3>Upload New Video</h3>
-              <button className="icon-btn close-btn" onClick={resetModal} disabled={uploading}><X size={20} /></button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {uploading && (
+                  <button
+                    className="icon-btn minimize-btn"
+                    onClick={() => { setIsMinimized(true); setIsUploadModalOpen(false); }}
+                    title="Minimize — upload continues in background"
+                  >
+                    <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 700, color: '#64748b' }}>–</span>
+                  </button>
+                )}
+                <button className="icon-btn close-btn" onClick={resetUpload} disabled={uploading}><X size={20} /></button>
+              </div>
             </div>
+
             <div className="modal-body">
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Video Title</label>
-                <input type="text" placeholder="e.g. React Basics" value={newVideoTitle} onChange={(e) => setNewVideoTitle(e.target.value)} disabled={uploading} />
+                <input type="text" placeholder="e.g. React Basics" value={newVideoTitle}
+                  onChange={(e) => setNewVideoTitle(e.target.value)} disabled={uploading} />
               </div>
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Category <span style={{ color: 'var(--text-danger)' }}>*</span></label>
-                <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedCourse(''); }} disabled={uploading}>
+                <select value={selectedCategory}
+                  onChange={(e) => { setSelectedCategory(e.target.value); setSelectedCourse(''); }}
+                  disabled={uploading}>
                   <option value="">Select a Category</option>
                   {categories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
                 </select>
               </div>
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Course <span style={{ color: 'var(--text-danger)' }}>*</span></label>
-                <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)} disabled={uploading || !selectedCategory}>
+                <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}
+                  disabled={uploading || !selectedCategory}>
                   <option value="">Select a Course</option>
-                  {filteredCourses.map(course => <option key={course._id || course.id} value={course._id || course.id}>{course.title}</option>)}
+                  {filteredCourses.map(course =>
+                    <option key={course._id || course.id} value={course._id || course.id}>{course.title}</option>
+                  )}
                 </select>
               </div>
-              <div className={`upload-zone ${isDragging ? 'dragging' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+
+              <div className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+                onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
                 {!uploading ? (
                   <div className="upload-content">
                     <div className="upload-icon-wrapper"><UploadCloud size={32} className="upload-icon" /></div>
                     {selectedFile ? (
                       <>
                         <h4 style={{ color: '#10b981' }}>✓ {selectedFile.name}</h4>
-                        <p style={{ color: 'var(--text-muted)' }}>{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB — click Save to upload</p>
-                        <button type="button" className="btn-outline" style={{ marginTop: '12px', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                        <p style={{ color: 'var(--text-muted)' }}>
+                          {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB — click Save to upload
+                        </p>
+                        <button type="button" className="btn-outline"
+                          style={{ marginTop: '12px' }} onClick={() => fileInputRef.current?.click()}>
                           Change File
                         </button>
                       </>
@@ -694,34 +592,34 @@ const Videos = () => {
                       <>
                         <h4>Drag & drop video files here</h4>
                         <p>Supports MP4, WebM, MOV up to 500MB.</p>
-                        <button type="button" className="btn-outline" style={{ marginTop: '12px', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                        <button type="button" className="btn-outline"
+                          style={{ marginTop: '12px' }} onClick={() => fileInputRef.current?.click()}>
                           Browse Files
                         </button>
                       </>
                     )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="video/*"
-                      onChange={handleFileSelect}
-                      style={{ display: 'none' }}
-                    />
+                    <input ref={fileInputRef} type="file" accept="video/*"
+                      onChange={handleFileSelect} style={{ display: 'none' }} />
                   </div>
                 ) : (
                   <div className="upload-progress-content">
                     <Film size={32} className="processing-icon" />
                     <h4>{uploadProgress < 100 ? 'Uploading and Saving...' : 'Upload Complete!'}</h4>
                     <div className="progress-bar-container">
-                      <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }}></div>
+                      <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
                     </div>
                     <p>{uploadProgress}%</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                      You can minimize this window — upload continues in the background.
+                    </p>
                   </div>
                 )}
               </div>
             </div>
+
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={resetModal} disabled={uploading}>Cancel</button>
-              <button className="btn-primary" onClick={handleSave} disabled={uploading}>
+              <button className="btn-secondary" onClick={resetUpload} disabled={uploading}>Cancel</button>
+              <button className="btn-primary" onClick={startUpload} disabled={uploading}>
                 {uploading ? <Loader size={16} className="spin-icon" /> : <Save size={16} />}
                 <span>{uploading ? 'Uploading...' : 'Save Video'}</span>
               </button>

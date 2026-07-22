@@ -1,5 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { UploadProvider } from './context/UploadContext'
+import UploadWidget from './components/UploadWidget/UploadWidget'
 import Login from './pages/Login/Login'
 import Register from './pages/Register/Register'
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword'
@@ -16,8 +18,6 @@ import Settings from './pages/Settings/Settings'
 import Notifications from './pages/Notifications/Notifications'
 import Subscriptions from './pages/Subscriptions/Subscriptions'
 import Analytics from './pages/Analytics/Analytics'
-
-
 
 import Progress from './pages/Progress/Progress'
 // import Reports from './pages/Reports/Reports'
@@ -36,44 +36,49 @@ import './App.css'
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+    <UploadProvider>
+      <BrowserRouter>
+        {/* Global upload widget — always rendered, visible only when minimized */}
+        <UploadWidget />
 
-        {/* Admin Portal Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="users" element={<Users />} />
-          <Route path="users/:id" element={<UserDetails />} />
-          <Route path="courses" element={<Courses />} />
-          <Route path="courses/:id" element={<CourseBuilder />} />
-          <Route path="categories" element={<Categories />} />
-          <Route path="videos" element={<Videos />} />
-          <Route path="videos/:id" element={<VideoSettings />} />
-          <Route path="subscriptions" element={<Subscriptions />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="progress" element={<Progress />} />
-          {/* <Route path="reports" element={<Reports />} /> */}
-          <Route path="settings" element={<Settings />} />
-          <Route path="notifications" element={<Notifications />} />
-        </Route>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Registered Student Portal Routes */}
-        <Route path="/dashboard" element={<UserLayout />}>
-          <Route index element={<UserDashboard />} />
-          <Route path="courses" element={<UserCourses />} />
-          <Route path="courses/:id" element={<UserCoursePlayer />} />
-          <Route path="subscriptions" element={<UserSubscriptions />} />
-          <Route path="settings" element={<UserProfile />} />
-          <Route path="notifications" element={<UserNotifications />} />
-        </Route>
+          {/* Admin Portal Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="users" element={<Users />} />
+            <Route path="users/:id" element={<UserDetails />} />
+            <Route path="courses" element={<Courses />} />
+            <Route path="courses/:id" element={<CourseBuilder />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="videos" element={<Videos />} />
+            <Route path="videos/:id" element={<VideoSettings />} />
+            <Route path="subscriptions" element={<Subscriptions />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="progress" element={<Progress />} />
+            {/* <Route path="reports" element={<Reports />} /> */}
+            <Route path="settings" element={<Settings />} />
+            <Route path="notifications" element={<Notifications />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Registered Student Portal Routes */}
+          <Route path="/dashboard" element={<UserLayout />}>
+            <Route index element={<UserDashboard />} />
+            <Route path="courses" element={<UserCourses />} />
+            <Route path="courses/:id" element={<UserCoursePlayer />} />
+            <Route path="subscriptions" element={<UserSubscriptions />} />
+            <Route path="settings" element={<UserProfile />} />
+            <Route path="notifications" element={<UserNotifications />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </UploadProvider>
   )
 }
 
