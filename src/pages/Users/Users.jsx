@@ -16,7 +16,7 @@ const ALL_COURSES = [
 ];
 
 
-const ITEMS_PER_PAGE = 4;
+const ITEMS_PER_PAGE = 10;
 
 const formatLogTime = (timeString) => {
   if (!timeString) return '—';
@@ -85,6 +85,8 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -115,20 +117,22 @@ const Users = () => {
   const [userModal, setUserModal] = useState(null); // null | { mode: 'add'|'edit', data: {} }
   const EMPTY_FORM = { name: '', email: '', phoneNumber: '', role: 'User', status: 'Active', subscription: 'Free', password: '', confirmPassword: '' };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = currentPage, search = searchTerm, status = statusFilter) => {
     setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('lms_token');
-      const response = await fetch(ADMIN_ENDPOINTS.USERS, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const params = new URLSearchParams({
+        page,
+        limit: ITEMS_PER_PAGE,
+        ...(search  ? { search }  : {}),
+        ...(status !== 'All' ? { status } : {}),
+      });
+      const response = await fetch(`${ADMIN_ENDPOINTS.USERS}?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
       });
       const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to fetch users.');
-      }
+      if (!response.ok) throw new Error(result.message || 'Failed to fetch users.');
       if (result.success) {
         const mappedUsers = result.data.map(u => ({
           id: u._id,
@@ -137,8 +141,8 @@ const Users = () => {
           phoneNumber: u.phoneNumber || '',
           role: u.role === 'admin' ? 'Admin' : 'User',
           status: u.status
-            ? u.status.charAt(0).toUpperCase() + u.status.slice(1)  // 'active' → 'Active'
-            : (u.isActive ? 'Active' : 'Inactive'),  // fallback for old records
+            ? u.status.charAt(0).toUpperCase() + u.status.slice(1)
+            : (u.isActive ? 'Active' : 'Inactive'),
           enrolled: u.courses ? u.courses.length : 0,
           registeredDate: u.createdAt ? u.createdAt.split('T')[0] : '—',
           subscription: u.subscribed ? 'Pro (Paid)' : 'Free',
@@ -154,6 +158,8 @@ const Users = () => {
           deviceLimit: u.deviceLimit || 2,
         }));
         setUsers(mappedUsers);
+        setTotalPages(result.totalPages || 1);
+        setTotalUsers(result.total || result.count || 0);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -164,9 +170,23 @@ const Users = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(1, searchTerm, statusFilter);
     fetchAvailableCourses();
   }, []);
+
+  // Re-fetch when page changes
+  useEffect(() => {
+    fetchUsers(currentPage, searchTerm, statusFilter);
+  }, [currentPage]);
+
+  // Reset to page 1 and re-fetch when search or filter changes (debounced)
+  useEffect(() => {
+    setCurrentPage(1);
+    const timer = setTimeout(() => {
+      fetchUsers(1, searchTerm, statusFilter);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusFilter]);
 
   const openAddModal = () => {
     setFormErrors({});
@@ -297,7 +317,7 @@ const Users = () => {
       }
 
       if (result.success) {
-        await fetchUsers();
+        await refreshUsers();
         setUserModal(null);
       } else {
         alert(result.message || 'Save failed.');
@@ -413,7 +433,7 @@ const Users = () => {
       if (!response.ok) throw new Error(result.message || 'Failed to update course access.');
 
       if (result.success) {
-        await fetchUsers();
+        await refreshUsers();
         setAccessUser(null);
         alert('Course access updated successfully!');
       }
@@ -447,7 +467,7 @@ const Users = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Failed to update device limit.');
       if (result.success) {
-        await fetchUsers();
+        await refreshUsers();
         setDeviceLimitUser(null);
       }
     } catch (err) {
@@ -477,7 +497,7 @@ const Users = () => {
         if (!response.ok) throw new Error(result.message || 'Status toggle failed.');
 
         if (result.success) {
-          await fetchUsers();
+          await refreshUsers();
         }
       } else if (action === 'Delete User') {
         if (!window.confirm(`Are you sure you want to delete user ${user.name}?`)) return;
@@ -493,7 +513,7 @@ const Users = () => {
         if (!response.ok) throw new Error(result.message || 'Failed to delete user.');
 
         if (result.success) {
-          await fetchUsers();
+          await refreshUsers();
         }
       } else if (action === 'Assign Course') {
         openAccessPanel(e, user);
@@ -506,7 +526,7 @@ const Users = () => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Failed to force logout.');
         if (result.success) {
-          await fetchUsers();
+          await refreshUsers();
           alert(`All sessions cleared for ${user.name}.`);
         }
       } else {
@@ -520,14 +540,9 @@ const Users = () => {
     setActiveDropdown(null);
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || user.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // After any mutation (add/edit/delete/status/etc.) re-fetch current page
+  const refreshUsers = () => fetchUsers(currentPage, searchTerm, statusFilter);
 
-  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   const flaggedCount = users.filter(u => u.ipFlagged).length;
 
   return (
@@ -562,11 +577,11 @@ const Users = () => {
                 type="text"
                 placeholder="Search users by name or email..."
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="toolbar-actions">
-              <select className="filter-select" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}>
+              <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="All">All Status</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
@@ -588,7 +603,7 @@ const Users = () => {
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.length > 0 ? paginatedUsers.map(user => (
+                {users.length > 0 ? users.map(user => (
                   <tr key={user.id} className={user.ipFlagged ? 'row-flagged' : ''}>
                     <td>
                       <div className="user-cell">
@@ -658,15 +673,32 @@ const Users = () => {
             </table>
           </div>
 
-          {totalPages > 1 && (
+          {/* Pagination — always visible when there's data */}
+          {totalUsers > 0 && (
             <div className="pagination-container">
-              <span className="pagination-info">Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} entries</span>
+              <span className="pagination-info">
+                {totalUsers} total user{totalUsers !== 1 ? 's' : ''}
+              </span>
               <div className="pagination-controls">
-                <button className="page-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}><ChevronLeft size={16} /></button>
-                {Array.from({ length: totalPages }).map((_, idx) => (
-                  <button key={idx} className={`page-btn ${currentPage === idx + 1 ? 'active' : ''}`} onClick={() => setCurrentPage(idx + 1)}>{idx + 1}</button>
-                ))}
-                <button className="page-btn" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}><ChevronRight size={16} /></button>
+                <button
+                  className="page-btn"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <span className="page-indicator">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <button
+                  className="page-btn"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
           )}
