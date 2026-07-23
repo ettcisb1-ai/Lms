@@ -1,0 +1,354 @@
+/* ═══════════════════════════════════════════════════
+   DRMPlayer — Secure Video Player Styles
+   ═══════════════════════════════════════════════════ */
+
+.drm-player-root {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Video element ──────────────────────────────── */
+.drm-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: filter 0.25s ease;
+}
+
+.drm-video--blurred {
+  filter: blur(20px) brightness(0.3);
+}
+
+/* ── Overlays (shared base) ────────────────────── */
+.drm-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.drm-overlay--loading {
+  background: #000;
+  flex-direction: column;
+  gap: 14px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.drm-overlay--buffering {
+  background: rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+
+.drm-overlay--blur {
+  backdrop-filter: blur(18px) brightness(0.3);
+  -webkit-backdrop-filter: blur(18px) brightness(0.3);
+  background: rgba(0,0,0,0.5);
+  pointer-events: auto;
+}
+
+.drm-overlay--devtools {
+  background: rgba(0,0,0,0.88);
+  pointer-events: auto;
+}
+
+.drm-overlay--error {
+  background: rgba(0,0,0,0.85);
+  pointer-events: auto;
+}
+
+.drm-overlay__message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.drm-overlay__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.drm-overlay__sub {
+  font-size: 13px;
+  color: #94a3b8;
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+/* ── Loading spinner ───────────────────────────── */
+.drm-spin {
+  animation: drm-rotate 0.9s linear infinite;
+  color: #3b82f6;
+}
+
+.drm-buffer-ring {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: drm-rotate 0.8s linear infinite;
+}
+
+@keyframes drm-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Security badge (top-left) ─────────────────── */
+.drm-security-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(15,23,42,0.82);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 6px;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.drm-player-root:hover .drm-security-badge {
+  opacity: 0.08;
+}
+
+/* ── Controls overlay (bottom) ─────────────────── */
+.drm-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+  padding: 20px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.drm-player-root:hover .drm-controls {
+  opacity: 1;
+}
+
+/* Always visible on touch */
+@media (hover: none) {
+  .drm-controls { opacity: 1; }
+}
+
+/* Progress slider row */
+.drm-controls__progress-row {
+  width: 100%;
+}
+
+/* Buttons row */
+.drm-controls__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drm-controls__left,
+.drm-controls__right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ── Sliders ──────────────────────────────────── */
+.drm-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Progress track */
+.drm-slider--progress {
+  width: 100%;
+}
+
+.drm-slider--progress::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--primary-color, #e74c3c) 0%,
+    var(--primary-color, #e74c3c) var(--pct, 0%),
+    rgba(255,255,255,0.28) var(--pct, 0%),
+    rgba(255,255,255,0.28) 100%
+  );
+}
+
+.drm-slider--progress:hover::-webkit-slider-runnable-track { height: 7px; }
+
+.drm-slider--progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color, #e74c3c);
+  margin-top: -4.5px;
+  cursor: pointer;
+  box-shadow: 0 0 3px rgba(0,0,0,0.4);
+}
+
+.drm-slider--progress::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color, #e74c3c);
+  border: none;
+  cursor: pointer;
+}
+
+/* Volume slider */
+.drm-slider--volume {
+  width: 0;
+  opacity: 0;
+  height: 4px;
+  accent-color: #fff;
+  transition: width 0.2s, opacity 0.2s;
+}
+
+.drm-volume:hover .drm-slider--volume,
+.drm-volume:focus-within .drm-slider--volume {
+  width: 70px;
+  opacity: 1;
+}
+
+/* ── Buttons ──────────────────────────────────── */
+.drm-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.drm-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--primary-color, #e74c3c);
+  transform: scale(1.1);
+}
+
+.drm-btn--sec {
+  border-radius: 4px;
+  color: #cbd5e1;
+}
+
+.drm-btn--sec:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  transform: none;
+}
+
+/* Time display */
+.drm-time {
+  font-size: 12px;
+  font-family: monospace;
+  color: #cbd5e1;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Volume wrapper */
+.drm-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Speed pills */
+.drm-speed {
+  display: flex;
+  gap: 3px;
+  background: rgba(255,255,255,0.1);
+  padding: 2px;
+  border-radius: 20px;
+}
+
+.drm-speed__btn {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  padding: 3px 7px;
+  border-radius: 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.drm-speed__btn:hover { color: #fff; }
+
+.drm-speed__btn.active {
+  background: #fff;
+  color: #000;
+}
+
+/* ── Print protection ─────────────────────────── */
+@media print {
+  .drm-player-root { display: none !important; }
+}
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 480px) {
+  .drm-controls { padding: 10px 10px 8px; }
+  .drm-speed__btn { font-size: 8px; padding: 2px 4px; }
+  .drm-controls__left, .drm-controls__right { gap: 6px; }
+  .drm-time { font-size: 9px; }
+  .drm-volume .drm-slider--volume { display: none; }
+}
+
+/* ── Retry button ──────────────────────────────────────────────── */
+.drm-retry-btn {
+  margin-top: 12px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary-color, #e74c3c);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.drm-retry-btn:hover { opacity: 0.85; }
+
+/* ── DevTools warning overlay ─────────────────────────────────── */
+.drm-overlay--devtools {
+  background: rgba(0, 0, 0, 0.92);
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}

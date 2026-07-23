@@ -1,47 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Play, Pause, RotateCcw, Volume2, VolumeX,
-  Maximize, CheckCircle, Circle, PlayCircle, Lock, BookOpen,
-  Clock, Edit3, MessageSquare, Save, Settings, Info, AlertTriangle, Shield
+  ChevronLeft, CheckCircle, Circle, PlayCircle, Lock, BookOpen,
+  Clock, Settings, Shield
 } from 'lucide-react';
-import Hls from 'hls.js';
 import './UserCoursePlayer.css';
 import { COURSE_ENDPOINTS, fetchSecureStreamUrl, verifyCourseAccess, API_BASE_URL, formatStoredDuration } from '../../utils/api';
-
-const ensureShakaLoaded = () => {
-  return new Promise((resolve) => {
-    if (window.shaka) {
-      resolve(true);
-      return;
-    }
-
-    console.log("[DRM_PLAYER] Shaka not found on window, loading dynamically...");
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js";
-    script.async = true;
-    script.onload = () => {
-      console.log("[DRM_PLAYER] Shaka Player CDN loaded dynamically successfully.");
-      resolve(true);
-    };
-    script.onerror = () => {
-      console.error("[DRM_PLAYER] Failed to load Shaka Player from primary CDN, trying backup unpkg...");
-      const backupScript = document.createElement('script');
-      backupScript.src = "https://unpkg.com/shaka-player@4.3.5/dist/shaka-player.compiled.js";
-      backupScript.async = true;
-      backupScript.onload = () => {
-        console.log("[DRM_PLAYER] Shaka Player backup CDN loaded successfully.");
-        resolve(true);
-      };
-      backupScript.onerror = () => {
-        console.error("[DRM_PLAYER] All Shaka Player CDNs failed to load.");
-        resolve(false);
-      };
-      document.body.appendChild(backupScript);
-    };
-    document.body.appendChild(script);
-  });
-};
+import DRMPlayer from '../../player/DRMPlayer';
 
 const UserCoursePlayer = () => {
   const { id } = useParams();
@@ -55,57 +20,29 @@ const UserCoursePlayer = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [accessMessage, setAccessMessage] = useState('');
 
-  // ── Player State ─────────────────────────────────────────────────────────────
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [openModules, setOpenModules] = useState({ 0: true, 1: true });
-  const [isBuffering, setIsBuffering] = useState(false);
+  // ── Player State — owned by DRMPlayer, mirrored here for progress/UI ────────
+  const [duration, setDuration]     = useState(0);
 
   // ── FR-29/32: Secure streaming state ────────────────────────────────────────
-  const [secureStreamUrl, setSecureStreamUrl] = useState('');
-  const [isHLS, setIsHLS] = useState(false);          // true → HLS.js, false → plain src
-  const [isDrm, setIsDrm] = useState(false);          // true → Shaka Player DRM
-  const [isDASH, setIsDASH] = useState(false);        // true → DASH stream
-  const [licenseServerUrl, setLicenseServerUrl] = useState('');
-  const [videoSecurity, setVideoSecurity] = useState(null);
+  const [secureStreamUrl, setSecureStreamUrl]     = useState('');
+  const [isHLS, setIsHLS]                         = useState(false);
+  const [isDrm, setIsDrm]                         = useState(false);
+  const [isDASH, setIsDASH]                       = useState(false);
+  const [licenseServerUrl, setLicenseServerUrl]   = useState('');
+  const [drmToken, setDrmToken]                   = useState('');
+  const [videoSecurity, setVideoSecurity]         = useState(null);
   const [streamTokenLoading, setStreamTokenLoading] = useState(false);
 
-  // ── FR-31: Screen capture detection state (experimental) ─────────────────────
-  const [screenRecordWarning, setScreenRecordWarning] = useState(false);
-  const screenRecordCheckRef = useRef(null);
-
-  // ── UI Tabs ──────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('info');
+  // ── UI ───────────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab]         = useState('info');
+  const [openModules, setOpenModules]     = useState({ 0: true, 1: true });
 
   // ── User & Progress ──────────────────────────────────────────────────────────
   const [userProfile, setUserProfile] = useState({ name: '', email: '', ip: '' });
   const [completedLectures, setCompletedLectures] = useState([]);
-  const [notes, setNotes] = useState('');
-  const [discussionInput, setDiscussionInput] = useState('');
-  const [discussions, setDiscussions] = useState([
-    { id: 1, name: 'Uzair Ahmed', avatar: 'UA', text: 'Make sure you check the PATH variable when setting up environment variables.', time: '2 hours ago' },
-    { id: 2, name: 'Sarah Malik', avatar: 'SM', text: 'This lecture is exceptionally well explained!', time: '1 day ago' },
-  ]);
 
-  // ── Watermark ────────────────────────────────────────────────────────────────
-  const [watermarkPos, setWatermarkPos] = useState({ top: 10, left: 10 });
-  // Second watermark at a diagonal-opposite position (harder to crop both out)
-  const [watermarkPos2, setWatermarkPos2] = useState({ top: 65, left: 55 });
-  // Session ID — unique per page load, used to identify leaked recordings
-  const [sessionId] = useState(() => `SID-${Math.random().toString(36).substr(2, 7).toUpperCase()}`);
-  // Watermark timestamp — updates every minute
-  const [watermarkTime, setWatermarkTime] = useState('');
-  // Video blur state — active when tab is hidden / window loses focus
-  const [isVideoBlurred, setIsVideoBlurred] = useState(false);
-
-  // ── Refs ─────────────────────────────────────────────────────────────────────
+  // ── Refs — videoEl kept so DRMPlayer's onDuration/onEnded can feed back duration ──
   const videoEl = useRef(null);
-  const hlsRef = useRef(null); // holds the active HLS.js instance
-  const shakaRef = useRef(null); // holds the active Shaka Player instance
 
   // ══════════════════════════════════════════════════════════════════════════════
   // FR-28: Verify course access before loading any content
@@ -172,9 +109,6 @@ const UserCoursePlayer = () => {
     const savedProfile = localStorage.getItem('lms_user_profile');
     if (savedProfile) setUserProfile(JSON.parse(savedProfile));
 
-    const savedNotes = localStorage.getItem(`lms_notes_course_${id}`);
-    if (savedNotes) setNotes(savedNotes);
-
     loadCourse();
   }, [id, navigate]);
 
@@ -217,11 +151,13 @@ const UserCoursePlayer = () => {
     setStreamTokenLoading(true);
     try {
       const { streamUrl, isHLS: hlsFlag, isDrm: drmFlag, isDASH: dashFlag, licenseServerUrl: licenseUrl, security } = await fetchSecureStreamUrl(videoId, token);
-      setSecureStreamUrl(streamUrl);   // FR-29: signed Cloudinary URL or opaque proxy token
-      setIsHLS(hlsFlag);               // FR-34: true → HLS.js adaptive, false → plain src
+      setSecureStreamUrl(streamUrl);
+      setIsHLS(hlsFlag);
       setIsDrm(drmFlag);
       setIsDASH(dashFlag);
       setLicenseServerUrl(licenseUrl || '');
+      // The DRM token IS the user's JWT — sent as Authorization on license requests
+      setDrmToken(token);
       setVideoSecurity(security);
     } catch (err) {
       console.warn('Stream token fetch failed, falling back:', err.message);
@@ -235,223 +171,6 @@ const UserCoursePlayer = () => {
     } finally {
       setStreamTokenLoading(false);
     }
-  }, []);
-
-  // ══════════════════════════════════════════════════════════════════════════════
-  // FR-31: Tab-switch / focus-loss → blur video + pause + warning banner
-  // ══════════════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    const onHide = () => {
-      setIsVideoBlurred(true);
-      setScreenRecordWarning(true);
-      if (videoSecurity?.antiScreenRecording) {
-        pauseVideoSecurely();
-      }
-    };
-
-    const onShow = () => {
-      setIsVideoBlurred(false);
-      setScreenRecordWarning(false);
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') onHide(); else onShow();
-    };
-
-    const handleBlur  = () => onHide();
-    const handleFocus = () => onShow();
-
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('blur',  handleBlur);
-    window.addEventListener('focus', handleFocus);
-
-    // Periodic check — catches edge cases where events are missed
-    screenRecordCheckRef.current = setInterval(() => {
-      if (document.hidden) onHide();
-    }, 3000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('blur',  handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      clearInterval(screenRecordCheckRef.current);
-    };
-  }, [videoSecurity]);
-
-  const pauseVideoSecurely = () => {
-    if (videoEl.current && !videoEl.current.paused) {
-      videoEl.current.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  // ══════════════════════════════════════════════════════════════════════════════
-  // FR-31: Watermark — position jitter every 4s, time update every 60s
-  // Second watermark moves on a separate offset interval for dual coverage
-  // ══════════════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    const updateTime = () =>
-      setWatermarkTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
-    updateTime();
-    const timeTimer = setInterval(updateTime, 60000);
-    return () => clearInterval(timeTimer);
-  }, []);
-
-  useEffect(() => {
-    const jitter = setInterval(() => {
-      // Primary watermark — upper region
-      setWatermarkPos({
-        top:  Math.floor(Math.random() * 35) + 5,
-        left: Math.floor(Math.random() * 55) + 5,
-      });
-      // Secondary watermark — lower region (diagonal from primary)
-      setWatermarkPos2({
-        top:  Math.floor(Math.random() * 30) + 58,
-        left: Math.floor(Math.random() * 40) + 45,
-      });
-    }, 4000);
-    return () => clearInterval(jitter);
-  }, []);
-
-  // ══════════════════════════════════════════════════════════════════════════════
-  // FR-34: HLS.js / plain-src source management
-  // Fires whenever secureStreamUrl or isHLS changes (e.g. lecture switch).
-  // Destroys any previous HLS instance before attaching a new one.
-  // ══════════════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    const videoElement = videoEl.current;
-    if (!videoElement) return;
-
-    // Destroy existing HLS instance on every change
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-
-    // Destroy existing Shaka Player instance on every change
-    if (shakaRef.current) {
-      shakaRef.current.destroy().catch(() => {});
-      shakaRef.current = null;
-    }
-
-    if (!secureStreamUrl) {
-      videoElement.removeAttribute('src');
-      videoElement.load();
-      return;
-    }
-
-    const initPlayer = async () => {
-      if (isDrm) {
-        const loaded = await ensureShakaLoaded();
-        if (loaded && window.shaka) {
-          console.log("[DRM_PLAYER] Initializing Shaka Player for Widevine DRM...");
-          const shakaPlayer = new window.shaka.Player(videoElement);
-          shakaRef.current = shakaPlayer;
-
-          shakaPlayer.addEventListener('error', (event) => {
-            console.error('[DRM_PLAYER] Shaka Player error:', event.detail);
-          });
-
-          const drmConfig = {};
-          if (licenseServerUrl) {
-            drmConfig['servers'] = {
-              'com.widevine.alpha': licenseServerUrl,
-              'com.microsoft.playready': licenseServerUrl
-            };
-          }
-          shakaPlayer.configure({ drm: drmConfig });
-
-          try {
-            await shakaPlayer.load(secureStreamUrl);
-            console.log('[DRM_PLAYER] Shaka Player loaded stream successfully');
-            return;
-          } catch (error) {
-            console.error('[DRM_PLAYER] Shaka Player load failed, falling back:', error);
-          }
-        }
-      }
-
-      // Fallback path if not DRM or Shaka failed to load/play
-      if (isHLS) {
-        if (Hls.isSupported()) {
-          // HLS.js adaptive streaming (Chrome, Firefox, Edge)
-          const hls = new Hls({
-            maxBufferLength: 30,
-            maxMaxBufferLength: 600,
-            enableWorker: true,
-            debug: false,
-          });
-          hls.loadSource(secureStreamUrl);
-          hls.attachMedia(videoElement);
-          hls.on(Hls.Events.ERROR, (_evt, data) => {
-            if (data.fatal) console.error('Fatal HLS error:', data.type, data.details);
-          });
-          hlsRef.current = hls;
-        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-          // Native HLS (Safari / iOS)
-          videoElement.src = secureStreamUrl;
-          videoElement.load();
-        }
-      } else {
-        // Plain MP4 or legacy proxy URL
-        videoElement.src = secureStreamUrl;
-        videoElement.load();
-      }
-    };
-
-    initPlayer();
-
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-      if (shakaRef.current) {
-        const p = shakaRef.current;
-        shakaRef.current = null;
-        p.destroy().catch(() => {});
-      }
-    };
-  }, [secureStreamUrl, isHLS, isDrm, licenseServerUrl]);
-
-  // ══════════════════════════════════════════════════════════════════════════════
-  // FR-30: Prevent right-click / download keyboard shortcuts / PiP
-  // ══════════════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    const blockContextMenu = (e) => {
-      if (e.target.closest('.custom-video-player-container')) {
-        e.preventDefault();
-        return false;
-      }
-    };
-
-    const blockKeyShortcuts = (e) => {
-      const blocked = (
-        (e.ctrlKey && (e.key === 's' || e.key === 'u')) ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'i' || e.key === 'j' || e.key === 'c')) ||
-        e.key === 'F12'
-      );
-      if (blocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }
-    };
-
-    // Exit picture-in-picture immediately if the user triggers it
-    const handleEnterPiP = () => {
-      document.exitPictureInPicture().catch(() => {});
-    };
-
-    document.addEventListener('contextmenu', blockContextMenu);
-    document.addEventListener('keydown', blockKeyShortcuts);
-    document.addEventListener('enterpictureinpicture', handleEnterPiP, true);
-
-    return () => {
-      document.removeEventListener('contextmenu', blockContextMenu);
-      document.removeEventListener('keydown', blockKeyShortcuts);
-      document.removeEventListener('enterpictureinpicture', handleEnterPiP, true);
-    };
   }, []);
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -503,119 +222,17 @@ const UserCoursePlayer = () => {
   // Lecture selection — fetches a new stream token on each lecture change
   // ══════════════════════════════════════════════════════════════════════════════
   const handleLectureSelect = async (lecture) => {
-    if (activeLecture && videoEl.current) {
-      reportProgress(videoEl.current.currentTime);
-    }
     setActiveLecture(lecture);
-    setIsPlaying(false);
-    setCurrentTime(0);
     setDuration(0);
-    // Clearing secureStreamUrl triggers the HLS effect to clean up any
-    // existing HLS instance before the new token/URL arrives.
+    // Clear stream triggers DRMPlayer to reset
     setSecureStreamUrl('');
     setIsHLS(false);
     setIsDrm(false);
     setIsDASH(false);
     setLicenseServerUrl('');
-
-    if (videoEl.current) videoEl.current.pause();
-
-    // FR-29/32: Get fresh stream token for selected lecture
+    setDrmToken('');
+    // Fetch new token
     await loadStreamToken(lecture);
-  };
-
-  // ══════════════════════════════════════════════════════════════════════════════
-  // FR-33: Standard player controls
-  // ══════════════════════════════════════════════════════════════════════════════
-  const handlePlayToggle = () => {
-    if (!videoEl.current) return;
-    if (isPlaying) {
-      videoEl.current.pause();
-      setIsPlaying(false);
-      reportProgress(videoEl.current.currentTime);
-    } else {
-      videoEl.current.play().then(() => setIsPlaying(true)).catch(console.error);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (videoEl.current) setCurrentTime(videoEl.current.currentTime);
-  };
-
-  const handleLoadedMetadata = () => {
-    if (!videoEl.current) return;
-    const secs = videoEl.current.duration;
-    setDuration(secs);
-
-    // Auto-patch duration in MongoDB if stored as 0:00
-    if (
-      secs > 0 &&
-      isFinite(secs) &&
-      activeLecture &&
-      (!activeLecture.duration || activeLecture.duration === '0:00')
-    ) {
-      const videoDoc = activeLecture.video;
-      const videoId = videoDoc
-        ? (typeof videoDoc === 'object' ? videoDoc._id?.toString() : videoDoc)
-        : null;
-
-      if (videoId) {
-        const h = Math.floor(secs / 3600);
-        const m = Math.floor((secs % 3600) / 60);
-        const s = Math.floor(secs % 60);
-        const formatted = h > 0
-          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-          : `${m}:${String(s).padStart(2, '0')}`;
-        const token = localStorage.getItem('lms_token');
-        fetch(`${API_BASE_URL}/api/videos/${videoId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ duration: formatted }),
-        }).catch(() => {}); // fire-and-forget, don't disrupt playback
-      }
-    }
-  };
-
-  const handleWaiting = () => setIsBuffering(true);
-  const handleCanPlay = () => setIsBuffering(false);
-
-  const handleSeek = (e) => {
-    const seekVal = parseFloat(e.target.value);
-    if (videoEl.current) {
-      videoEl.current.currentTime = seekVal;
-      setCurrentTime(seekVal);
-    }
-  };
-
-  const handleVolumeChange = (e) => {
-    const volVal = parseFloat(e.target.value);
-    setVolume(volVal);
-    setIsMuted(volVal === 0);
-    if (videoEl.current) {
-      videoEl.current.volume = volVal;
-      videoEl.current.muted = (volVal === 0);
-    }
-  };
-
-  const handleMuteToggle = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    if (videoEl.current) videoEl.current.muted = nextMuted;
-  };
-
-  const handleSpeedChange = (rate) => {
-    setPlaybackRate(rate);
-    if (videoEl.current) videoEl.current.playbackRate = rate;
-  };
-
-  const handleFullscreen = () => {
-    const container = document.querySelector('.custom-video-player-container');
-    if (!container) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      container.requestFullscreen().catch(console.error);
-    }
   };
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -692,60 +309,20 @@ const UserCoursePlayer = () => {
     }
   };
 
-  const handleVideoEnded = () => {
-    setIsPlaying(false);
+  const handleVideoEnded = useCallback(() => {
     const lectureId = activeLecture?._id || activeLecture?.id;
+    reportProgress(duration, true);
     if (lectureId && !completedLectures.includes(lectureId)) {
       handleCompletedToggle(lectureId);
-    } else {
-      reportProgress(duration, true);
     }
+    // Auto-advance to next lecture
     const currentIndex = flatLectures.findIndex(l => (l._id || l.id) === lectureId);
     if (currentIndex !== -1 && currentIndex < flatLectures.length - 1) {
-      const nextLecture = flatLectures[currentIndex + 1];
-      setTimeout(() => {
-        handleLectureSelect(nextLecture).then(() => {
-          setTimeout(() => {
-            videoEl.current?.play().then(() => setIsPlaying(true)).catch(console.error);
-          }, 600);
-        });
-      }, 1000);
+      setTimeout(() => handleLectureSelect(flatLectures[currentIndex + 1]), 1000);
     }
-  };
-
-  const formatTime = (t) => {
-    if (isNaN(t)) return '00:00';
-    const h = Math.floor(t / 3600);
-    const m = Math.floor((t % 3600) / 60);
-    const s = Math.floor(t % 60);
-    if (h > 0) {
-      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
+  }, [activeLecture, completedLectures, flatLectures, duration]);
 
   const toggleModule = (idx) => setOpenModules(prev => ({ ...prev, [idx]: !prev[idx] }));
-
-  const handleSaveNotes = () => {
-    localStorage.setItem(`lms_notes_course_${id}`, notes);
-    alert('Notes saved!');
-  };
-
-  const handleAddDiscussion = (e) => {
-    e.preventDefault();
-    if (!discussionInput.trim()) return;
-    setDiscussions([
-      {
-        id: Date.now(),
-        name: userProfile.name || 'You',
-        avatar: (userProfile.name || 'Y').charAt(0),
-        text: discussionInput,
-        time: 'Just now',
-      },
-      ...discussions,
-    ]);
-    setDiscussionInput('');
-  };
 
   // ══════════════════════════════════════════════════════════════════════════════
   // Render Guards
@@ -790,22 +367,10 @@ const UserCoursePlayer = () => {
   return (
     <div className="user-course-player-page">
 
-      {/* FR-31: Screen capture detection banner (experimental) */}
-      {screenRecordWarning && (
-        <div className="screen-record-warning-bar">
-          <AlertTriangle size={16} />
-          <span>
-            <strong>Screen Capture Detection (Experimental):</strong> Browser focus or tab visibility changed.
-            Playback paused. Return to this tab to resume.
-          </span>
-        </div>
-      )}
-
-      {/* Upper Navigation Header */}
+      {/* Top navigation */}
       <div className="classroom-top-nav">
         <button className="back-btn" onClick={() => navigate('/dashboard/courses')}>
           <ChevronLeft size={20} />
-          <span></span>
         </button>
         <div className="classroom-course-details">
           <h2>{courseData.title}</h2>
@@ -813,7 +378,6 @@ const UserCoursePlayer = () => {
             ({completedLectures.length} / {flatLectures.length} lectures completed)
           </span>
         </div>
-        {/* FR-29: Security indicator */}
         <div className="secure-stream-badge" title="Content is delivered via secure encrypted stream">
           <Shield size={14} />
           <span>Secure Stream</span>
@@ -822,189 +386,51 @@ const UserCoursePlayer = () => {
 
       <div className="classroom-workspace-grid">
 
-        {/* Left Column: Player & Tabs */}
+        {/* ── Left Column: DRMPlayer + Tabs ── */}
         <div className="classroom-content-column">
 
-          {/*
-            ── FR-29, FR-30, FR-32, FR-33, FR-34 ────────────────────────────────
-            Custom secure video player
-          */}
-          <div
-            className="custom-video-player-container"
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {streamTokenLoading && (
-              <div className="stream-loading-overlay">
-                <div className="stream-spinner" />
-                <span>Loading secure stream…</span>
-              </div>
-            )}
+          {/* Empty course placeholder */}
+          {flatLectures.length === 0 && (
+            <div className="custom-video-player-container" style={{ display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, color:'#94a3b8' }}>
+              <BookOpen size={40} style={{ opacity: 0.3 }} />
+              <span style={{ fontSize:14, fontWeight:600 }}>No lectures available yet</span>
+            </div>
+          )}
 
-            {/* Single video element — src managed by HLS effect, never set via JSX prop */}
-            <video
-              ref={videoEl}
-              className={`secure-video-element${isVideoBlurred ? ' video-is-blurred' : ''}`}
-              onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
+          {/* Select a lecture placeholder */}
+          {flatLectures.length > 0 && !secureStreamUrl && !streamTokenLoading && (
+            <div className="custom-video-player-container" style={{ display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:10, color:'#94a3b8' }}>
+              <PlayCircle size={48} style={{ opacity: 0.35 }} />
+              <span>Select a lecture to begin</span>
+            </div>
+          )}
+
+          {/* Token loading spinner */}
+          {streamTokenLoading && (
+            <div className="custom-video-player-container" style={{ display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:14, color:'#94a3b8' }}>
+              <div className="stream-spinner" />
+              <span style={{ fontSize:13 }}>Loading secure stream…</span>
+            </div>
+          )}
+
+          {/* ── DRMPlayer — replaces all old <video> + Shaka/HLS code ── */}
+          {secureStreamUrl && !streamTokenLoading && (
+            <DRMPlayer
+              streamUrl={secureStreamUrl}
+              isDrm={isDrm}
+              isDASH={isDASH}
+              isHLS={isHLS}
+              licenseServerUrl={licenseServerUrl}
+              drmToken={drmToken}
+              watermark={{
+                userName:   userProfile.name  || 'Student',
+                userEmail:  userProfile.email || '',
+                courseName: courseData.title  || '',
+              }}
+              onDuration={(secs) => setDuration(secs)}
               onEnded={handleVideoEnded}
-              onWaiting={handleWaiting}
-              onCanPlay={handleCanPlay}
-              onError={(e) => { console.error('Video error:', e.target.error); setIsBuffering(false); }}
-              onClick={handlePlayToggle}
-              autoPlay={false}
-              playsInline
-              controlsList="nodownload nofullscreen noremoteplayback"
-              disablePictureInPicture
-              onContextMenu={(e) => e.preventDefault()}
-              preload="auto"
             />
-
-            {/* FR-34: Buffering spinner overlay — only when a video is actually loading */}
-            {isBuffering && !streamTokenLoading && secureStreamUrl && (
-              <div className="buffering-overlay">
-                <div className="buffering-spinner" />
-                <span>Buffering…</span>
-              </div>
-            )}
-
-            {/* No lectures in course at all */}
-            {!streamTokenLoading && flatLectures.length === 0 && (
-              <div className="buffering-overlay" style={{ background: 'rgba(0,0,0,0.85)' }}>
-                <BookOpen size={40} style={{ opacity: 0.35, marginBottom: 8 }} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>No lectures available yet</span>
-                <span style={{ fontSize: 12, opacity: 0.55, marginTop: 4, textAlign: 'center', maxWidth: 260 }}>
-                  The instructor hasn't added any content to this course yet. Check back later.
-                </span>
-              </div>
-            )}
-
-            {/* Lectures exist but none selected / stream not ready */}
-            {!streamTokenLoading && flatLectures.length > 0 && !secureStreamUrl && (
-              <div className="buffering-overlay" style={{ background: 'rgba(0,0,0,0.75)' }}>
-                <PlayCircle size={48} style={{ opacity: 0.4, marginBottom: 8 }} />
-                <span>Select a lecture to begin</span>
-              </div>
-            )}
-
-            {/* FR-31: Dynamic watermark — moves every 4s to deter/identify screen recording */}
-            <div
-              className="floating-security-watermark"
-              style={{ top: `${watermarkPos.top}%`, left: `${watermarkPos.left}%` }}
-              aria-hidden="true"
-            >
-              <span>{userProfile.email || userProfile.name}</span>
-              <span>{watermarkTime}</span>
-              <span>{sessionId}</span>
-            </div>
-
-            {/* FR-31: Second watermark at a diagonal-opposite position — harder to crop both */}
-            <div
-              className="floating-security-watermark watermark-secondary"
-              style={{ top: `${watermarkPos2.top}%`, left: `${watermarkPos2.left}%` }}
-              aria-hidden="true"
-            >
-              <span>{userProfile.email || userProfile.name}</span>
-              <span>{sessionId}</span>
-            </div>
-
-            {/* FR-31: Tab-switch / focus-loss blur overlay */}
-            {isVideoBlurred && (
-              <div className="video-blur-overlay" aria-hidden="true">
-                <div className="video-blur-message">
-                  <span style={{ fontSize: 28, marginBottom: 8 }}>🔒</span>
-                  <span>Playback paused</span>
-                  <span style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                    Return to this tab to resume
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* FR-33: Custom player controls */}
-            <div className="video-controls-overlay">
-              {/* Progress bar — FR-33: seek */}
-              <div className="progress-slider-row">
-                <input
-                  type="range"
-                  min="0"
-                  max={duration || 100}
-                  value={currentTime}
-                  onChange={handleSeek}
-                  className="timeline-slider-bar"
-                  style={{
-                    '--progress-pct': `${duration ? (currentTime / duration) * 100 : 0}%`
-                  }}
-                />
-              </div>
-
-              {/* Action buttons */}
-              <div className="controls-buttons-bar">
-                <div className="left-controls">
-                  {/* FR-33: Play/Pause */}
-                  <button onClick={handlePlayToggle} className="control-btn" title={isPlaying ? 'Pause' : 'Play'}>
-                    {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-                  </button>
-
-                  {/* FR-33: Seek backward */}
-                  <button
-                    onClick={() => { if (videoEl.current) videoEl.current.currentTime -= 10; }}
-                    className="control-btn-sec"
-                    title="Rewind 10s"
-                  >
-                    <RotateCcw size={15} />
-                  </button>
-
-                  {/* FR-33: Time display */}
-                  <span className="time-display">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                </div>
-
-                <div className="right-controls">
-                  {/* FR-33: Volume */}
-                  <div className="volume-slider-wrapper">
-                    <button onClick={handleMuteToggle} className="control-btn-sec">
-                      {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                    </button>
-                    <input
-                      type="range" min="0" max="1" step="0.05"
-                      value={isMuted ? 0 : volume}
-                      onChange={handleVolumeChange}
-                      className="volume-slider-bar"
-                    />
-                  </div>
-
-                  {/* FR-33: Playback speed */}
-                  <div className="speed-selector-group">
-                    {[0.75, 1, 1.25, 1.5, 2].map(speed => (
-                      <button
-                        key={speed}
-                        className={`speed-pill-btn ${playbackRate === speed ? 'active' : ''}`}
-                        onClick={() => handleSpeedChange(speed)}
-                      >
-                        {speed}x
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* FR-33: Fullscreen */}
-                  <button onClick={handleFullscreen} className="control-btn" title="Fullscreen">
-                    <Maximize size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* FR-29, FR-30, FR-32, FR-34: Security notice */}
-            <div className="inspect-protection-banner">
-              <Info size={12} />
-              <span>
-                Secure stream · Downloads disabled · URLs protected
-                {videoSecurity?.antiScreenRecording ? ' · Screen capture detection active' : ''}
-                {isHLS ? ' · HLS adaptive bitrate' : ''}
-              </span>
-            </div>
-          </div>
+          )}
 
           {/* Classroom Tabs */}
           <div className="classroom-tabs-bar">
