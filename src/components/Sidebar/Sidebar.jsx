@@ -180,9 +180,9 @@ const Sidebar = ({ isCollapsed, onTabChange }) => {
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-logo">
-        <div className="logo-icon">L</div>
+        <img src="/Logo.png" alt="LMS Logo" className="logo-icon logo-img" />
         <div className="logo-text">
-          <span className="brand-name">LMS Portal</span>
+          <span className="brand-name">ETTC</span>
           <span className="brand-sub">DASHBOARD</span>
         </div>
       </div>

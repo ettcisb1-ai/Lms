@@ -22,36 +22,9 @@ import {
     Volume2, VolumeX, RotateCcw, Loader, AlertTriangle,
 } from 'lucide-react';
 import Hls from 'hls.js';
+import shaka from 'shaka-player/dist/shaka-player.compiled';
 import { Watermark } from './watermark';
 import './DRMPlayer.css';
-
-// ── Shaka lazy-loader ─────────────────────────────────────────────────────────
-let _shakaPromise: Promise<boolean> | null = null;
-
-const loadShaka = (): Promise<boolean> => {
-    if ((window as any).shaka) return Promise.resolve(true);
-    if (_shakaPromise) return _shakaPromise;
-
-    _shakaPromise = new Promise((resolve) => {
-        const tryLoad = (src: string, fallback?: string) => {
-            const s = document.createElement('script');
-            s.src = src;
-            s.async = true;
-            s.onload = () => resolve(true);
-            s.onerror = () => {
-                if (fallback) tryLoad(fallback);
-                else { _shakaPromise = null; resolve(false); }
-            };
-            document.body.appendChild(s);
-        };
-        tryLoad(
-            'https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js',
-            'https://unpkg.com/shaka-player@4.3.5/dist/shaka-player.compiled.js',
-        );
-    });
-
-    return _shakaPromise;
-};
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 export interface DRMPlayerProps {
@@ -148,58 +121,51 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
             const isDashUrl = isDrm || isDASH || streamUrl.includes('.mpd');
 
             if (isDashUrl) {
-                loadShaka().then((loaded) => {
-                    if (!loaded) {
-                        setPlayerError('Shaka Player failed to load. Please refresh.');
+                // ── Bundled shaka-player npm package — no CDN needed ──────────────
+                shaka.polyfill.installAll();
+
+                shaka.Player.probeSupport().then((support: any) => {
+                    if (isDrm && !support?.drm?.['com.widevine.alpha']) {
+                        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                        setPlayerError(
+                            isSafari
+                                ? 'Safari requires FairPlay DRM. Please open in Chrome or Edge.'
+                                : 'Your browser does not support Widevine DRM. Please use Chrome or Edge.'
+                        );
                         setIsLoading(false);
                         return;
                     }
 
-                    const shaka = (window as any).shaka;
+                    const player = new shaka.Player(v);
+                    shakaRef.current = player;
 
-                    shaka.Player.probeSupport().then((support: any) => {
-                        if (isDrm && !support?.drm?.['com.widevine.alpha']) {
-                            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                            setPlayerError(
-                                isSafari
-                                    ? 'Safari requires FairPlay DRM. Please open in Chrome or Edge.'
-                                    : 'Your browser does not support Widevine DRM. Please use Chrome or Edge.'
-                            );
-                            setIsLoading(false);
-                            return;
-                        }
-
-                        const player = new shaka.Player(v);
-                        shakaRef.current = player;
-
-                        player.addEventListener('error', (e: any) => {
-                            const code = e.detail?.code ?? 0;
-                            setPlayerError(mapShakaError(code));
-                        });
-
-                        if (isDrm && licenseServerUrl && drmToken) {
-                            player.configure({
-                                drm: {
-                                    servers: {
-                                        'com.widevine.alpha': licenseServerUrl,
-                                        'com.microsoft.playready': licenseServerUrl,
-                                    },
-                                },
-                            });
-                            player.getNetworkingEngine().registerRequestFilter(
-                                (_type: number, req: any) => {
-                                    if (_type === 2) req.headers['Authorization'] = `Bearer ${drmToken}`;
-                                }
-                            );
-                        }
-
-                        player.load(streamUrl)
-                            .then(() => { setIsLoading(false); })
-                            .catch((err: any) => {
-                                setPlayerError(mapShakaError(err?.code));
-                                setIsLoading(false);
-                            });
+                    player.addEventListener('error', (e: any) => {
+                        const code = e.detail?.code ?? 0;
+                        setPlayerError(mapShakaError(code));
                     });
+
+                    if (isDrm && licenseServerUrl && drmToken) {
+                        player.configure({
+                            drm: {
+                                servers: {
+                                    'com.widevine.alpha': licenseServerUrl,
+                                    'com.microsoft.playready': licenseServerUrl,
+                                },
+                            },
+                        });
+                        player.getNetworkingEngine().registerRequestFilter(
+                            (_type: number, req: any) => {
+                                if (_type === 2) req.headers['Authorization'] = `Bearer ${drmToken}`;
+                            }
+                        );
+                    }
+
+                    player.load(streamUrl)
+                        .then(() => { setIsLoading(false); })
+                        .catch((err: any) => {
+                            setPlayerError(mapShakaError(err?.code));
+                            setIsLoading(false);
+                        });
                 });
 
                 return;

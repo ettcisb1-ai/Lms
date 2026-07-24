@@ -176,9 +176,9 @@ const UserLayout = () => {
       {/* Sidebar */}
       <aside className={`user-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-logo">
-          <div className="logo-icon">S</div>
+          <img src="/Logo.png" alt="LMS Logo" className="logo-icon logo-img" />
           <div className="logo-text">
-            <span className="brand-name">LMS Portal</span>
+            <span className="brand-name">ETTC</span>
             <span className="brand-sub">STUDENT HUB</span>
           </div>
         </div>

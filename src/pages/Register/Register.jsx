@@ -271,7 +271,9 @@ const Register = () => {
 
         {/* Right form pane */}
         <div className="login-form-pane">
-          <h1 className="login-logo">LMS Portal</h1>
+          <div className="login-logo">
+            <img src="/Logo.png" alt="ETTC" className="login-logo-img" />
+          </div>
 
           <div className="login-form-wrapper">
             <h2 className="login-title">Create Account</h2>

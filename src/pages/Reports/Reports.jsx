@@ -447,7 +447,7 @@ const Reports = () => {
     return (
       <div className="report-content-pane printable-report-card animate-fade-in" id="printable-area">
         <div className="printable-executive-header">
-          <div className="brand-badge-node">LMS PORTAL ADMINISTRATIVE EXECUTIVE REPORT</div>
+          <div className="brand-badge-node">ETTC ADMINISTRATIVE EXECUTIVE REPORT</div>
           <div className="header-meta-row">
             <div>
               <h2 className="print-main-title">Monthly Revenue Financial Report</h2>
@@ -552,7 +552,7 @@ const Reports = () => {
     return (
       <div className="report-content-pane printable-report-card animate-fade-in" id="printable-area">
         <div className="printable-executive-header">
-          <div className="brand-badge-node">LMS PORTAL ADMINISTRATIVE EXECUTIVE REPORT</div>
+          <div className="brand-badge-node">ETTC ADMINISTRATIVE EXECUTIVE REPORT</div>
           <div className="header-meta-row">
             <div>
               <h2 className="print-main-title">Active Students & Learner Engagement Report</h2>
@@ -643,7 +643,7 @@ const Reports = () => {
     return (
       <div className="report-content-pane printable-report-card animate-fade-in" id="printable-area">
         <div className="printable-executive-header">
-          <div className="brand-badge-node">LMS PORTAL ADMINISTRATIVE EXECUTIVE REPORT</div>
+          <div className="brand-badge-node">ETTC ADMINISTRATIVE EXECUTIVE REPORT</div>
           <div className="header-meta-row">
             <div>
               <h2 className="print-main-title">Course Performance & Academic Audit</h2>

@@ -91,7 +91,10 @@ const Login = () => {
         </div>
 
         <div className="login-form-pane">
-          <h1 className="login-logo">LMS Portal</h1>
+          <div className="login-logo">
+            <img src="/Logo.png" alt="ETTC" className="login-logo-img" />
+            <h2>ETTC</h2>
+          </div>
 
           {/* Admin / User tab switcher */}
           <div className="login-tabs">

@@ -491,7 +491,7 @@ const UserSubscriptions = () => {
 
             <div className="digital-receipt-element">
               <div className="receipt-header">
-                <h3>LMS PORTAL INVOICE RECEIPT</h3>
+                <h3>ETTC INVOICE RECEIPT</h3>
                 <span className="receipt-txn">TRANSACTION: {receiptData.txnId}</span>
               </div>
 

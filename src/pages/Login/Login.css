@@ -52,10 +52,15 @@
 }
 
 .login-logo {
-  color: var(--primary-color);
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.login-logo-img {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
 }
 
 .login-tabs {
