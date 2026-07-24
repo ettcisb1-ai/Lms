@@ -19,6 +19,7 @@ export const AUTH_ENDPOINTS = {
   LOGOUT: `${API_BASE_URL}/api/users/logout`,
 };
 
+
 export const ADMIN_ENDPOINTS = {
   LOGIN_ADMIN: `${API_BASE_URL}/api/admin/login`,
   PROFILE_ADMIN: `${API_BASE_URL}/api/admin/profile`,
