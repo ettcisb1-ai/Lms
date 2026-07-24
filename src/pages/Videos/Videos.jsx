@@ -481,9 +481,6 @@ const Videos = () => {
   // ── Upload state comes from global context (survives navigation) ───────────
   const {
     isUploadModalOpen, setIsUploadModalOpen,
-    isMinimized, setIsMinimized,
-    uploading,
-    uploadProgress,
     selectedFile, setSelectedFile,
     thumbnailFile, setThumbnailFile,
     newVideoTitle, setNewVideoTitle,
@@ -718,37 +715,25 @@ const Videos = () => {
       )}
 
       {/* ── Upload Modal ──────────────────────────────────────────────────────── */}
-      {isUploadModalOpen && !isMinimized && (
+      {isUploadModalOpen && (
         <>
         <div className="upload-modal-backdrop">
           <div className="upload-modal">
             <div className="modal-header">
               <h3>Upload New Video</h3>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {uploading && (
-                  <button
-                    className="icon-btn minimize-btn"
-                    onClick={() => { setIsMinimized(true); setIsUploadModalOpen(false); }}
-                    title="Minimize — upload continues in background"
-                  >
-                    <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 700, color: '#64748b' }}>–</span>
-                  </button>
-                )}
-                <button className="icon-btn close-btn" onClick={resetUpload} disabled={uploading}><X size={20} /></button>
-              </div>
+              <button className="icon-btn close-btn" onClick={resetUpload}><X size={20} /></button>
             </div>
 
             <div className="modal-body">
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Video Title</label>
                 <input type="text" placeholder="e.g. React Basics" value={newVideoTitle}
-                  onChange={(e) => setNewVideoTitle(e.target.value)} disabled={uploading} />
+                  onChange={(e) => setNewVideoTitle(e.target.value)} />
               </div>
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Category <span style={{ color: 'var(--text-danger)' }}>*</span></label>
                 <select value={selectedCategory}
-                  onChange={(e) => { setSelectedCategory(e.target.value); setSelectedCourse(''); }}
-                  disabled={uploading}>
+                  onChange={(e) => { setSelectedCategory(e.target.value); setSelectedCourse(''); }}>
                   <option value="">Select a Category</option>
                   {categories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
                 </select>
@@ -756,7 +741,7 @@ const Videos = () => {
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Course <span style={{ color: 'var(--text-danger)' }}>*</span></label>
                 <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}
-                  disabled={uploading || !selectedCategory}>
+                  disabled={!selectedCategory}>
                   <option value="">Select a Course</option>
                   {filteredCourses.map(course =>
                     <option key={course._id || course.id} value={course._id || course.id}>{course.title}</option>
@@ -776,7 +761,6 @@ const Videos = () => {
                           type="button"
                           className="thumbnail-remove-btn"
                           onClick={() => setThumbnailFile(null)}
-                          disabled={uploading}
                         >
                           <X size={14} />
                         </button>
@@ -786,7 +770,6 @@ const Videos = () => {
                       type="button"
                       className="thumbnail-upload-btn"
                       onClick={() => setShowThumbPicker(true)}
-                      disabled={uploading}
                     >
                       <Camera size={16} />
                       <span>{thumbnailFile ? 'Change Frame' : 'Pick from Video'}</span>
@@ -797,60 +780,40 @@ const Videos = () => {
 
               <div className={`upload-zone ${isDragging ? 'dragging' : ''}`}
                 onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-                {!uploading ? (
-                  <div className="upload-content">
-                    <div className="upload-icon-wrapper"><UploadCloud size={32} className="upload-icon" /></div>
-                    {selectedFile ? (
-                      <>
-                        <h4 style={{ color: '#10b981' }}>✓ {selectedFile.name}</h4>
-                        <p style={{ color: 'var(--text-muted)' }}>
-                          {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB — click Save to upload
-                        </p>
-                        <button type="button" className="btn-outline"
-                          style={{ marginTop: '12px' }} onClick={() => fileInputRef.current?.click()}>
-                          Change File
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <h4>Drag & drop video files here</h4>
-                        <p>Supports MP4, WebM, MOV up to 500MB.</p>
-                        <button type="button" className="btn-outline"
-                          style={{ marginTop: '12px' }} onClick={() => fileInputRef.current?.click()}>
-                          Browse Files
-                        </button>
-                      </>
-                    )}
-                    <input ref={fileInputRef} type="file" accept="video/*"
-                      onChange={handleFileSelect} style={{ display: 'none' }} />
-                  </div>
-                ) : (
-                  <div className="upload-progress-content">
-                    <Film size={32} className="processing-icon" />
-                    <h4>
-                      {uploadProgress >= 100
-                        ? 'Upload Complete!'
-                        : uploadProgress < 20 && thumbnailFile
-                          ? 'Uploading thumbnail…'
-                          : 'Uploading video…'}
-                    </h4>
-                    <div className="progress-bar-container">
-                      <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                    <p>{uploadProgress}%</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                      You can minimize this window — upload continues in the background.
-                    </p>
-                  </div>
-                )}
+                <div className="upload-content">
+                  <div className="upload-icon-wrapper"><UploadCloud size={32} className="upload-icon" /></div>
+                  {selectedFile ? (
+                    <>
+                      <h4 style={{ color: '#10b981' }}>✓ {selectedFile.name}</h4>
+                      <p style={{ color: 'var(--text-muted)' }}>
+                        {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB — click Start Upload
+                      </p>
+                      <button type="button" className="btn-outline"
+                        style={{ marginTop: '12px' }} onClick={() => fileInputRef.current?.click()}>
+                        Change File
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h4>Drag & drop video files here</h4>
+                      <p>Supports MP4, WebM, MOV up to 500MB.</p>
+                      <button type="button" className="btn-outline"
+                        style={{ marginTop: '12px' }} onClick={() => fileInputRef.current?.click()}>
+                        Browse Files
+                      </button>
+                    </>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="video/*"
+                    onChange={handleFileSelect} style={{ display: 'none' }} />
+                </div>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={resetUpload} disabled={uploading}>Cancel</button>
-              <button className="btn-primary" onClick={startUpload} disabled={uploading}>
-                {uploading ? <Loader size={16} className="spin-icon" /> : <Save size={16} />}
-                <span>{uploading ? 'Uploading...' : 'Save Video'}</span>
+              <button className="btn-secondary" onClick={resetUpload}>Cancel</button>
+              <button className="btn-primary" onClick={startUpload}>
+                <Save size={16} />
+                <span>Start Upload</span>
               </button>
             </div>
           </div>
