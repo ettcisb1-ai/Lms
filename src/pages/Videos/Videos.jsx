@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   UploadCloud, Search, Filter, PlayCircle, MoreVertical, Film,
-  Clock, Plus, X, Save, Pencil, Trash2, Settings, Check, AlertTriangle, Loader
+  Clock, Plus, X, Save, Pencil, Trash2, Settings, Check, AlertTriangle, Loader, Camera
 } from 'lucide-react';
 import './Videos.css';
 import { VIDEO_ENDPOINTS, CATEGORY_ENDPOINTS, COURSE_ENDPOINTS, UPLOAD_ENDPOINT, formatStoredDuration } from '../../utils/api';
 import { ShimmerVideos } from '../../components/Shimmer/Shimmer';
 import { useUpload } from '../../context/UploadContext';
+import ThumbnailPicker from '../../components/ThumbnailPicker/ThumbnailPicker';
 
 // ─── Dropdown Menu Component ─────────────────────────────────────────────────
 const VideoCardMenu = ({ video, onEdit, onDelete, onSettings }) => {
@@ -72,8 +73,41 @@ const EditVideoModal = ({ video, categories, courses, onClose, onSaved }) => {
   );
   const [status, setStatus] = useState(video.status || 'Published');
   const [duration, setDuration] = useState(video.duration || '0:00');
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [thumbnailCleared, setThumbnailCleared] = useState(false);
+  const [showThumbPicker, setShowThumbPicker] = useState(false);
+  const [thumbPickerUrl, setThumbPickerUrl] = useState(null);
+  const [loadingPickerUrl, setLoadingPickerUrl] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const thumbnailInputRef = useRef(null);
+
+  // Fetch a stream token URL for the picker (admin preview)
+  const openThumbPicker = async () => {
+    setLoadingPickerUrl(true);
+    try {
+      const token = localStorage.getItem('lms_token');
+      const res = await fetch(VIDEO_ENDPOINTS.GET_STREAM_TOKEN(video._id), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success && data.streamUrl) {
+        const API_BASE = UPLOAD_ENDPOINT.replace(/\/api\/upload$/, '');
+        const url = data.streamUrl.startsWith('http')
+          ? data.streamUrl
+          : `${API_BASE}${data.streamUrl}`;
+        setThumbPickerUrl(url);
+        setShowThumbPicker(true);
+      } else {
+        setError('Could not load video for preview. Try again.');
+      }
+    } catch {
+      setError('Could not load video for preview. Check your connection.');
+    } finally {
+      setLoadingPickerUrl(false);
+    }
+  };
 
   const filteredCourses = selectedCategory
     ? courses.filter(c => {
@@ -81,6 +115,33 @@ const EditVideoModal = ({ video, categories, courses, onClose, onSaved }) => {
       return catId === selectedCategory;
     })
     : courses;
+
+  // Helper: upload image to S3
+  const uploadImageToS3 = async (file) => {
+    const token = localStorage.getItem('lms_token');
+    const s3SigEndpoint = UPLOAD_ENDPOINT.endsWith('/upload')
+      ? UPLOAD_ENDPOINT.replace(/\/upload$/, '/upload/s3-signature')
+      : `${UPLOAD_ENDPOINT}/s3-signature`;
+
+    const sigRes = await fetch(
+      `${s3SigEndpoint}?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const sigData = await sigRes.json();
+    if (!sigRes.ok || !sigData.success)
+      throw new Error(sigData.message || 'Failed to get S3 upload URL');
+
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', sigData.presignedUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.onload  = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`S3 upload failed`));
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(file);
+    });
+
+    return sigData.publicUrl;
+  };
 
   const handleSave = async () => {
     if (!title.trim()) { setError('Video title is required.'); return; }
@@ -90,11 +151,18 @@ const EditVideoModal = ({ video, categories, courses, onClose, onSaved }) => {
     setSaving(true);
     setError('');
     try {
+      let thumbnailUrl = video.thumbnail || '';
+      if (thumbnailFile) {
+        thumbnailUrl = await uploadImageToS3(thumbnailFile);
+      } else if (thumbnailCleared) {
+        thumbnailUrl = ''; // user explicitly removed it
+      }
+
       const token = localStorage.getItem('lms_token');
       const res = await fetch(VIDEO_ENDPOINTS.UPDATE(video._id), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ title, category: selectedCategory, course: selectedCourse, status, duration }),
+        body: JSON.stringify({ title, category: selectedCategory, course: selectedCourse, status, duration, thumbnail: thumbnailUrl }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || 'Failed to update video.');
@@ -134,6 +202,44 @@ const EditVideoModal = ({ video, categories, courses, onClose, onSaved }) => {
                 placeholder="e.g. React Hooks Deep Dive"
                 disabled={saving}
               />
+            </div>
+
+            {/* Thumbnail Picker */}
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label>Thumbnail</label>
+              <div className="thumbnail-picker">
+                {(thumbnailFile || (video.thumbnail && !thumbnailCleared)) ? (
+                  <div className="thumbnail-preview">
+                    <img
+                      src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : video.thumbnail}
+                      alt="Thumbnail"
+                    />
+                    <button
+                      type="button"
+                      className="thumbnail-remove-btn"
+                      onClick={() => { setThumbnailFile(null); setThumbnailCleared(true); }}
+                      disabled={saving}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="thumbnail-upload-btn"
+                  onClick={openThumbPicker}
+                  disabled={saving || loadingPickerUrl}
+                >
+                  {loadingPickerUrl
+                    ? <><Loader size={14} className="spin-icon" /><span>Loading…</span></>
+                    : <><Camera size={16} /><span>
+                        {(thumbnailFile || (video.thumbnail && !thumbnailCleared))
+                          ? 'Change Frame'
+                          : 'Pick from Video'}
+                      </span></>
+                  }
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
@@ -198,10 +304,25 @@ const EditVideoModal = ({ video, categories, courses, onClose, onSaved }) => {
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? <><Clock size={14} className="spin-icon" /><span>Saving...</span></> : <><Check size={14} /><span>Save Changes</span></>}
+            {saving
+              ? <><Clock size={14} className="spin-icon" /><span>{thumbnailFile ? 'Uploading thumbnail…' : 'Saving...'}</span></>
+              : <><Check size={14} /><span>Save Changes</span></>}
           </button>
         </div>
       </div>
+
+      {/* ThumbnailPicker — loads via stream token (secure, no raw URL exposed) */}
+      {showThumbPicker && thumbPickerUrl && (
+        <ThumbnailPicker
+          videoUrl={thumbPickerUrl}
+          onCapture={(blob) => {
+            const file = new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' });
+            setThumbnailFile(file);
+            setThumbnailCleared(false);
+          }}
+          onClose={() => { setShowThumbPicker(false); setThumbPickerUrl(null); }}
+        />
+      )}
     </div>
   );
 };
@@ -351,6 +472,12 @@ const Videos = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalVideos, setTotalVideos] = useState(0);
+  const LIMIT = 12;
+
   // ── Upload state comes from global context (survives navigation) ───────────
   const {
     isUploadModalOpen, setIsUploadModalOpen,
@@ -358,6 +485,7 @@ const Videos = () => {
     uploading,
     uploadProgress,
     selectedFile, setSelectedFile,
+    thumbnailFile, setThumbnailFile,
     newVideoTitle, setNewVideoTitle,
     selectedCategory, setSelectedCategory,
     selectedCourse, setSelectedCourse,
@@ -371,20 +499,32 @@ const Videos = () => {
   const [deletingVideo, setDeletingVideo] = useState(null);
   const [securityVideo, setSecurityVideo] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = async (page = 1, search = '') => {
     setIsLoading(true);
     const token = localStorage.getItem('lms_token');
     try {
+      const params = new URLSearchParams({ page, limit: LIMIT });
+      if (search) params.set('search', search);
+
       const [videoRes, catRes, courseRes] = await Promise.all([
-        fetch(VIDEO_ENDPOINTS.LIST, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${VIDEO_ENDPOINTS.LIST}?${params}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(CATEGORY_ENDPOINTS.LIST),
         fetch(COURSE_ENDPOINTS.LIST),
       ]);
       const [videoResult, catResult, courseResult] = await Promise.all([
         videoRes.json(), catRes.json(), courseRes.json()
       ]);
-      if (videoResult.success) setVideos(videoResult.data);
-      if (catResult.success) setCategories(catResult.data);
+      if (videoResult.success) {
+        const data  = videoResult.data   || [];
+        const total = videoResult.total  ?? data.length;
+        const limit = videoResult.limit  ?? LIMIT;
+        const pages = videoResult.pages  ?? Math.ceil(total / limit) ?? 1;
+        setVideos(data);
+        setTotalPages(Math.max(1, pages));
+        setTotalVideos(total);
+        setCurrentPage(videoResult.page || page);
+      }
+      if (catResult.success)    setCategories(catResult.data);
       if (courseResult.success) setCourses(courseResult.data);
     } catch (err) {
       console.error('Fetch data error:', err);
@@ -393,15 +533,38 @@ const Videos = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // Single effect: run on mount and whenever page or searchTerm changes.
+  // Search resets to page 1 and is debounced 400 ms.
+  const searchRef = useRef(searchTerm);
+  useEffect(() => {
+    const isNewSearch = searchTerm !== searchRef.current;
+    searchRef.current = searchTerm;
+
+    if (isNewSearch) {
+      // Search changed — debounce and reset to page 1
+      const timer = setTimeout(() => {
+        setCurrentPage(1);
+        fetchData(1, searchTerm);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+
+    // Page changed (or initial mount) — fetch immediately
+    fetchData(currentPage, searchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, searchTerm]);
 
   const filteredCourses = selectedCategory
     ? courses.filter(c => (c.category?._id || c.category) === selectedCategory)
     : courses;
 
+  // ── Thumbnail picker state (upload modal) ──────────────────────────────────
+  const [showThumbPicker, setShowThumbPicker] = useState(false);
+
   // drag-and-drop state (UI only — file stored in context)
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const thumbnailInputRef = useRef(null);
 
   const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = ()  => setIsDragging(false);
@@ -429,8 +592,11 @@ const Videos = () => {
   };
 
   const handleDeleted = (deletedId) => {
-    setVideos(prev => prev.filter(v => v._id !== deletedId));
     setDeletingVideo(null);
+    // If we deleted the last item on the page, go back one page
+    const newPage = videos.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+    setCurrentPage(newPage);
+    fetchData(newPage, searchTerm);
   };
 
   const handleSecuritySaved = (updatedVideo) => {
@@ -438,7 +604,8 @@ const Videos = () => {
     setSecurityVideo(null);
   };
 
-  const filteredVideos = videos.filter(v => v.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Search is now server-side — no client-side filter needed
+  const displayedVideos = videos;
 
   return (
     <div className="videos-page">
@@ -447,7 +614,7 @@ const Videos = () => {
           <h2 className="page-title">Video Library</h2>
           <p className="page-subtitle">Upload, manage, and secure your video content.</p>
         </div>
-        <button className="btn-primary" onClick={() => openUploadModal(fetchData)}>
+        <button className="btn-primary" onClick={() => openUploadModal(() => fetchData(currentPage, searchTerm))}>
           <Plus size={16} /><span>Add Video</span>
         </button>
       </div>
@@ -466,68 +633,93 @@ const Videos = () => {
       </div>
 
       {isLoading ? (
-        <ShimmerVideos count={6} />
-      ) : filteredVideos.length === 0 ? (
+        <ShimmerVideos count={12} />
+      ) : displayedVideos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', border: '1px dashed var(--border-color)', borderRadius: '8px', color: 'var(--text-muted)' }}>
-          No videos found. Click "Add Video" to upload your first video lecture!
+          {searchTerm ? `No videos found for "${searchTerm}".` : 'No videos found. Click "Add Video" to upload your first video lecture!'}
         </div>
       ) : (
-        <div className="videos-grid">
-          {filteredVideos.map(video => (
-            <div
-              key={video._id}
-              className="video-card"
-              onClick={() => navigate(`/admin/videos/${video._id}`)}
-            >
-              <div className="video-thumbnail">
-                {video.thumbnail ? (
-                  <img src={video.thumbnail} alt={video.title} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px 8px 0 0' }} />
-                ) : (
-                  <div className="thumbnail-overlay">
-                    <PlayCircle size={48} className="play-icon" />
+        <>
+          <div className="videos-grid">
+            {displayedVideos.map(video => (
+              <div
+                key={video._id}
+                className="video-card"
+                onClick={() => navigate(`/admin/videos/${video._id}`)}
+              >
+                <div className="video-thumbnail">
+                  {video.thumbnail ? (
+                    <img src={video.thumbnail} alt={video.title} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px 8px 0 0' }} />
+                  ) : (
+                    <div className="thumbnail-overlay">
+                      <PlayCircle size={48} className="play-icon" />
+                    </div>
+                  )}
+                  <span className="video-duration">{formatStoredDuration(video.duration)}</span>
+                  {video.status === 'Processing' && (
+                    <div className="processing-badge"><Clock size={12} /> Processing...</div>
+                  )}
+                </div>
+
+                <div className="video-info">
+                  <div className="video-header">
+                    <h3 className="video-title">{video.title}</h3>
+                    <VideoCardMenu
+                      video={video}
+                      onEdit={setEditingVideo}
+                      onDelete={setDeletingVideo}
+                      onSettings={setSecurityVideo}
+                    />
                   </div>
-                )}
-                <span className="video-duration">{formatStoredDuration(video.duration)}</span>
-                {video.status === 'Processing' && (
-                  <div className="processing-badge"><Clock size={12} /> Processing...</div>
-                )}
-              </div>
 
-              <div className="video-info">
-                <div className="video-header">
-                  <h3 className="video-title">{video.title}</h3>
-                  {/* ── 3-dot menu with Edit / Security Settings / Delete ── */}
-                  <VideoCardMenu
-                    video={video}
-                    onEdit={setEditingVideo}
-                    onDelete={setDeletingVideo}
-                    onSettings={setSecurityVideo}
-                  />
-                </div>
+                  <div className="video-meta">
+                    <span className={`status-dot ${video.status?.toLowerCase()}`}></span>
+                    <span className="video-status">{video.status}</span>
+                    <span className="dot">•</span>
+                    <span className="video-size">{video.size}</span>
+                  </div>
 
-                <div className="video-meta">
-                  <span className={`status-dot ${video.status?.toLowerCase()}`}></span>
-                  <span className="video-status">{video.status}</span>
-                  <span className="dot">•</span>
-                  <span className="video-size">{video.size}</span>
-                </div>
-
-                <div className="video-course">
-                  <span className="label">Category:</span>{' '}
-                  {video.category ? (video.category.name || video.category) : 'N/A'}
-                </div>
-                <div className="video-course">
-                  <span className="label">Course:</span>{' '}
-                  {video.course ? (video.course.title || video.course) : 'Unassigned'}
+                  <div className="video-course">
+                    <span className="label">Category:</span>{' '}
+                    {video.category ? (video.category.name || video.category) : 'N/A'}
+                  </div>
+                  <div className="video-course">
+                    <span className="label">Course:</span>{' '}
+                    {video.course ? (video.course.title || video.course) : 'Unassigned'}
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* ── Pagination ─────────────────────────────────────────────────── */}
+          {totalPages > 1 && (
+            <div className="videos-pagination-compact">
+              <button
+                className="page-nav-btn"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                aria-label="Previous page"
+              >
+                ‹
+              </button>
+              <span className="page-counter">{currentPage}/{totalPages}</span>
+              <button
+                className="page-nav-btn"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                aria-label="Next page"
+              >
+                ›
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* ── Upload Modal ──────────────────────────────────────────────────────── */}
       {isUploadModalOpen && !isMinimized && (
+        <>
         <div className="upload-modal-backdrop">
           <div className="upload-modal">
             <div className="modal-header">
@@ -572,6 +764,37 @@ const Videos = () => {
                 </select>
               </div>
 
+              {/* Thumbnail Picker — pick frame from selected video */}
+              {selectedFile && (
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label>Thumbnail (Optional)</label>
+                  <div className="thumbnail-picker">
+                    {thumbnailFile ? (
+                      <div className="thumbnail-preview">
+                        <img src={URL.createObjectURL(thumbnailFile)} alt="Thumbnail" />
+                        <button
+                          type="button"
+                          className="thumbnail-remove-btn"
+                          onClick={() => setThumbnailFile(null)}
+                          disabled={uploading}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="thumbnail-upload-btn"
+                      onClick={() => setShowThumbPicker(true)}
+                      disabled={uploading}
+                    >
+                      <Camera size={16} />
+                      <span>{thumbnailFile ? 'Change Frame' : 'Pick from Video'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className={`upload-zone ${isDragging ? 'dragging' : ''}`}
                 onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
                 {!uploading ? (
@@ -604,7 +827,13 @@ const Videos = () => {
                 ) : (
                   <div className="upload-progress-content">
                     <Film size={32} className="processing-icon" />
-                    <h4>{uploadProgress < 100 ? 'Uploading and Saving...' : 'Upload Complete!'}</h4>
+                    <h4>
+                      {uploadProgress >= 100
+                        ? 'Upload Complete!'
+                        : uploadProgress < 20 && thumbnailFile
+                          ? 'Uploading thumbnail…'
+                          : 'Uploading video…'}
+                    </h4>
                     <div className="progress-bar-container">
                       <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
                     </div>
@@ -626,6 +855,20 @@ const Videos = () => {
             </div>
           </div>
         </div>
+
+        {/* ThumbnailPicker opens on top of upload modal */}
+        {showThumbPicker && selectedFile && (
+          <ThumbnailPicker
+            videoFile={selectedFile}
+            onCapture={(blob) => {
+              // Convert blob → File so UploadContext can upload it to S3
+              const file = new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' });
+              setThumbnailFile(file);
+            }}
+            onClose={() => setShowThumbPicker(false)}
+          />
+        )}
+        </>
       )}
 
       {/* ── Edit Modal ──────────────────────────────────────────────────────────── */}

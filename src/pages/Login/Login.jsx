@@ -92,7 +92,7 @@ const Login = () => {
 
         <div className="login-form-pane">
           <div className="login-logo">
-            <img src="/Logo.png" alt="ETTC" className="login-logo-img" />
+            <img src="/Logo.png" alt="ETTC Learning Management System" className="login-logo-img" />
             <h2>ETTC</h2>
           </div>
 

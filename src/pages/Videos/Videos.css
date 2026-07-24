@@ -972,3 +972,128 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ── Pagination (Compact) ────────────────────────────────────────────────────── */
+.videos-pagination-compact {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 8px 0;
+}
+
+.page-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: white;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.page-nav-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #111827;
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-counter {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ── Thumbnail Picker ────────────────────────────────────────────────────────── */
+.thumbnail-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.thumbnail-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1.5px dashed var(--border-color);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.thumbnail-upload-btn:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #fff5f5;
+}
+
+.thumbnail-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.thumbnail-preview {
+  position: relative;
+  width: 120px;
+  height: 68px;
+  border-radius: 8px;
+  overflow: visible;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.thumbnail-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+.thumbnail-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: #dc2626;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: background 0.15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.thumbnail-remove-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.thumbnail-remove-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

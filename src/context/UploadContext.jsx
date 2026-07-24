@@ -12,6 +12,7 @@ export const UploadProvider = ({ children }) => {
   const [uploading, setUploading]                 = useState(false);
   const [uploadProgress, setUploadProgress]       = useState(0);
   const [selectedFile, setSelectedFile]           = useState(null);
+  const [thumbnailFile, setThumbnailFile]         = useState(null);   // ← NEW
   const [newVideoTitle, setNewVideoTitle]         = useState('');
   const [selectedCategory, setSelectedCategory]   = useState('');
   const [selectedCourse, setSelectedCourse]       = useState('');
@@ -29,6 +30,7 @@ export const UploadProvider = ({ children }) => {
     setUploading(false);
     setUploadProgress(0);
     setSelectedFile(null);
+    setThumbnailFile(null);
     setNewVideoTitle('');
     setSelectedCategory('');
     setSelectedCourse('');
@@ -65,6 +67,39 @@ export const UploadProvider = ({ children }) => {
       vid.src = url;
     });
 
+  // ── upload a file (video or image) to S3 via presigned URL ─────────────────
+  const uploadFileToS3 = async (file, token, onProgress) => {
+    const s3SigEndpoint = UPLOAD_ENDPOINT.endsWith('/upload')
+      ? UPLOAD_ENDPOINT.replace(/\/upload$/, '/upload/s3-signature')
+      : `${UPLOAD_ENDPOINT}/s3-signature`;
+
+    const isImage  = file.type.startsWith('image/');
+    const folder   = isImage ? 'lms-thumbnails' : 'lms-videos';
+
+    const sigRes = await fetch(
+      `${s3SigEndpoint}?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}&folder=${folder}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const sigData = await sigRes.json();
+    if (!sigRes.ok || !sigData.success)
+      throw new Error(sigData.message || 'Failed to get S3 upload URL');
+
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', sigData.presignedUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress)
+          onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload  = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`S3 upload failed (${xhr.status})`));
+      xhr.onerror = () => reject(new Error('S3 network connection failed.'));
+      xhr.send(file);
+    });
+
+    return sigData.publicUrl;
+  };
+
   // ── main upload function ────────────────────────────────────────────────────
   const startUpload = useCallback(async () => {
     if (!newVideoTitle.trim()) { alert('Please enter a video title.'); return; }
@@ -83,61 +118,65 @@ export const UploadProvider = ({ children }) => {
     };
 
     try {
-      // Step 1: presigned S3 URL
+      // Step 1: Get video duration
+      const duration = await getVideoDuration(selectedFile);
+      setUploadProgress(8);
+
+      // Step 2: Upload thumbnail first (if provided) — quick, usually small
+      let thumbnailUrl = '';
+      if (thumbnailFile) {
+        thumbnailUrl = await uploadFileToS3(thumbnailFile, token, (pct) => {
+          setUploadProgress(8 + Math.round(pct * 0.12)); // 8 → 20%
+        });
+      }
+      setUploadProgress(20);
+
+      // Step 3: Get presigned URL for video + upload video to S3
       const s3SigEndpoint = UPLOAD_ENDPOINT.endsWith('/upload')
         ? UPLOAD_ENDPOINT.replace(/\/upload$/, '/upload/s3-signature')
         : `${UPLOAD_ENDPOINT}/s3-signature`;
 
-      const [duration, sigRes] = await Promise.all([
-        getVideoDuration(selectedFile),
-        fetch(
-          `${s3SigEndpoint}?fileName=${encodeURIComponent(selectedFile.name)}&contentType=${encodeURIComponent(selectedFile.type)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        ),
-      ]);
-
+      const sigRes = await fetch(
+        `${s3SigEndpoint}?fileName=${encodeURIComponent(selectedFile.name)}&contentType=${encodeURIComponent(selectedFile.type)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       const sigData = await sigRes.json();
       if (!sigRes.ok || !sigData.success)
         throw new Error(sigData.message || 'Failed to get S3 upload URL');
 
-      setUploadProgress(10);
+      setUploadProgress(22);
 
-      // Step 2: PUT directly to S3 — XHR stored in ref so navigation can't kill it
       await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhrRef.current = xhr;
         xhr.open('PUT', sigData.presignedUrl, true);
         xhr.setRequestHeader('Content-Type', selectedFile.type);
-
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 78) + 10;
-            setUploadProgress(Math.min(pct, 88));
+            const pct = Math.round((e.loaded / e.total) * 68) + 22;
+            setUploadProgress(Math.min(pct, 90));
           }
         };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`S3 upload failed (${xhr.status})`));
-        };
+        xhr.onload  = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`S3 upload failed (${xhr.status})`));
         xhr.onerror = () => reject(new Error('S3 network connection failed.'));
         xhr.send(selectedFile);
       });
 
-      setUploadProgress(90);
+      setUploadProgress(92);
 
-      // Step 3: Save video record in MongoDB
+      // Step 4: Save video record in MongoDB
       const createRes = await fetch(VIDEO_ENDPOINTS.CREATE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          title:    newVideoTitle,
-          videoUrl: sigData.publicUrl,
-          thumbnail: '',
-          category: selectedCategory,
-          course:   selectedCourse,
-          size:     formatBytes(selectedFile.size),
+          title:     newVideoTitle,
+          videoUrl:  sigData.publicUrl,
+          thumbnail: thumbnailUrl,
+          category:  selectedCategory,
+          course:    selectedCourse,
+          size:      formatBytes(selectedFile.size),
           duration,
-          status:   'Published',
+          status:    'Published',
         }),
       });
 
@@ -146,7 +185,6 @@ export const UploadProvider = ({ children }) => {
       if (!createRes.ok) throw new Error(createResult.message || 'Saving video failed.');
 
       if (createResult.success) {
-        // Show success briefly then clean up
         setIsMinimized(false);
         setIsUploadModalOpen(true);
         if (onSuccessRef.current) onSuccessRef.current();
@@ -157,9 +195,9 @@ export const UploadProvider = ({ children }) => {
       alert(err.message || 'Upload failed.');
       setUploading(false);
       setIsMinimized(false);
-      setIsUploadModalOpen(true); // re-show modal so user can retry
+      setIsUploadModalOpen(true);
     }
-  }, [newVideoTitle, selectedCategory, selectedCourse, selectedFile, resetUpload]);
+  }, [newVideoTitle, selectedCategory, selectedCourse, selectedFile, thumbnailFile, resetUpload]);
 
   const value = {
     // modal visibility
@@ -169,6 +207,7 @@ export const UploadProvider = ({ children }) => {
     uploading,
     uploadProgress,
     selectedFile, setSelectedFile,
+    thumbnailFile, setThumbnailFile,   // ← NEW
     newVideoTitle, setNewVideoTitle,
     selectedCategory, setSelectedCategory,
     selectedCourse, setSelectedCourse,

@@ -593,18 +593,18 @@ const Users = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>User Details</th>
-                  {/* <th>Role</th> */}
+                  <th>User</th>
                   <th>Status</th>
                   <th>Courses</th>
-                  <th>IP / Device</th>
-                  <th className="last-login-cell">Last Login</th>
-                  <th className="text-center">Actions</th>
+                  <th>Last Login</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length > 0 ? users.map(user => (
                   <tr key={user.id} className={user.ipFlagged ? 'row-flagged' : ''}>
+
+                    {/* User */}
                     <td>
                       <div className="user-cell">
                         <div className="user-avatar">{user.name.charAt(0)}</div>
@@ -614,28 +614,24 @@ const Users = () => {
                         </div>
                       </div>
                     </td>
-                    {/* <td><span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span></td> */}
-                    <td><span className={`status-badge ${user.status.toLowerCase()}`}>{user.status}</span></td>
-                    <td>
-                      <div className="courses-cell">
-                        <span>{user.enrolled} Courses</span>
 
-                      </div>
-                    </td>
+                    {/* Status */}
                     <td>
-                      <div className="ip-cell">
-                        {user.ipFlagged && <span className="ip-flag-dot" title="IP mismatch detected"><AlertTriangle size={12} /></span>}
-                        <span className={user.ipFlagged ? 'ip-flagged-text' : ''}>{user.currentIp}</span>
-                        <span className="device-small">{user.device}</span>
-                      </div>
+                      <span className={`status-badge ${user.status.toLowerCase()}`}>{user.status}</span>
                     </td>
+
+                    {/* Courses */}
+                    <td>{user.enrolled} Course{user.enrolled !== 1 ? 's' : ''}</td>
+
+                    {/* Last Login */}
                     <td className="last-login-cell">{user.lastLogin}</td>
-                    <td className="text-center">
-                      <div className="action-cell" style={{ justifyContent: 'center' }}>
+
+                    {/* Actions */}
+                    <td>
+                      <div className="action-cell">
                         <button className="icon-btn view" onClick={(e) => { e.stopPropagation(); openUserDetails(user); }} title="View Details">
                           <Eye size={16} />
                         </button>
-
                         <button className="icon-btn edit" onClick={(e) => openEditModal(e, user)} title="Edit User">
                           <Edit2 size={16} />
                         </button>
@@ -651,9 +647,8 @@ const Users = () => {
                               {user.status === 'Inactive' ? (
                                 <button onClick={(e) => handleAction(e, 'Activate', user)}><CheckCircle size={14} /> Activate User</button>
                               ) : (
-                                <button onClick={(e) => handleAction(e, 'Deactivate', user)} className="text-warning"><Ban size={14} />Inactive</button>
+                                <button onClick={(e) => handleAction(e, 'Deactivate', user)} className="text-warning"><Ban size={14} /> Deactivate</button>
                               )}
-                              <button onClick={(e) => handleAction(e, 'Reset Password', user)}><Key size={14} /> Reset Password</button>
                               <button onClick={(e) => openAccessPanel(e, user)}><Shield size={14} /> Course Access</button>
                               <button onClick={(e) => openDeviceLimitModal(e, user)}><Smartphone size={14} /> Manage Devices</button>
                               <button onClick={(e) => openActivityLog(e, user)}><Activity size={14} /> Activity Log</button>
@@ -666,7 +661,9 @@ const Users = () => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="7" className="text-center" style={{ padding: '32px 0' }}>No users found matching your criteria.</td>
+                    <td colSpan="5" className="text-center" style={{ padding: '40px 0', color: 'var(--text-muted)' }}>
+                      No users found.
+                    </td>
                   </tr>
                 )}
               </tbody>
