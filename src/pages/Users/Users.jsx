@@ -3,7 +3,7 @@ import {
   Plus, Edit2, Trash2, Search, MoreVertical, X, Ban,
   CheckCircle, Key, Book, LogOut, ChevronLeft, ChevronRight,
   Activity, Clock, Eye, AlertTriangle, Shield, Lock, Unlock,
-  BookOpen, BookX, Loader, Smartphone
+  BookOpen, BookX, Loader, Smartphone, RotateCcw
 } from 'lucide-react';
 import UserDetailsPanel from '../../components/UserDetailsPanel/UserDetailsPanel';
 import { ADMIN_ENDPOINTS, COURSE_ENDPOINTS } from '../../utils/api';
@@ -155,7 +155,7 @@ const Users = () => {
           courses: u.courses || [],
           activityLog: u.activityLog || [],
           lastLogin: getRealLastLogin(u.activityLog),
-          deviceLimit: u.deviceLimit || 2,
+          deviceLimit: typeof u.deviceLimit === 'number' ? u.deviceLimit : 2,
         }));
         setUsers(mappedUsers);
         setTotalPages(result.totalPages || 1);
@@ -448,7 +448,7 @@ const Users = () => {
   const openDeviceLimitModal = (e, user) => {
     e.stopPropagation();
     setDeviceLimitUser(user);
-    setDeviceLimitValue(user.deviceLimit || 2);
+    setDeviceLimitValue(typeof user.deviceLimit === 'number' ? user.deviceLimit : 2);
     setActiveDropdown(null);
   };
 
@@ -517,6 +517,22 @@ const Users = () => {
         }
       } else if (action === 'Assign Course') {
         openAccessPanel(e, user);
+      } else if (action === 'Device Reset') {
+        if (!window.confirm(`Reset device access for ${user.name}? This will set allowed devices to 0.`)) return;
+        const response = await fetch(ADMIN_ENDPOINTS.USER_DEVICE_LIMIT(user.id), {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ deviceLimit: 0 })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Failed to reset device limit.');
+        if (result.success) {
+          await refreshUsers();
+          alert(`Allowed devices for ${user.name} set to 0.`);
+        }
       } else if (action === 'Force Logout') {
         if (!window.confirm(`Force logout all sessions for ${user.name}?`)) return;
         const response = await fetch(ADMIN_ENDPOINTS.USER_FORCE_LOGOUT(user.id), {
@@ -651,6 +667,7 @@ const Users = () => {
                               )}
                               <button onClick={(e) => openAccessPanel(e, user)}><Shield size={14} /> Course Access</button>
                               <button onClick={(e) => openDeviceLimitModal(e, user)}><Smartphone size={14} /> Manage Devices</button>
+                              <button onClick={(e) => handleAction(e, 'Device Reset', user)}><RotateCcw size={14} /> Device Reset</button>
                               <button onClick={(e) => openActivityLog(e, user)}><Activity size={14} /> Activity Log</button>
                               <button onClick={(e) => handleAction(e, 'Force Logout', user)} className="text-danger"><LogOut size={14} /> Force Logout</button>
                             </div>
@@ -940,7 +957,7 @@ const Users = () => {
                   onChange={e => setDeviceLimitValue(Number(e.target.value))}
                   disabled={savingDeviceLimit}
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                     <option key={n} value={n}>{n} {n === 1 ? 'Device' : 'Devices'}</option>
                   ))}
                 </select>
