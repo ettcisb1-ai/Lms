@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, Video, Search, Filter, MoreVertical, Globe2, EyeOff } from 'lucide-react';
 import CourseFormPanel from '../../components/CourseFormPanel/CourseFormPanel';
 import './Courses.css';
@@ -17,6 +18,7 @@ const getRandomColorBg = (id) => {
 };
 
 const Courses = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -176,10 +178,6 @@ const Courses = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        {/* <button className="btn-secondary">
-          <Filter size={16} />
-          <span>Filter</span>
-        </button> */}
       </div>
 
       {/* Error */}
@@ -214,7 +212,11 @@ const Courses = () => {
               </thead>
               <tbody>
                 {filteredCourses.map(course => (
-                  <tr key={course.id}>
+                  <tr
+                    key={course.id}
+                    onClick={() => navigate(`/admin/courses/${course.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {/* Course cell */}
                     <td>
                       <div className="course-cell">
@@ -272,6 +274,9 @@ const Courses = () => {
                           </button>
                           {activeDropdown === course.id && (
                             <div className="dropdown-menu">
+                              <button onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); navigate(`/admin/courses/${course.id}`); }}>
+                                <Video size={14} /> View Course Details & Videos
+                              </button>
                               <button onClick={(e) => handleAction(e, 'Edit', course)}><Edit2 size={14} /> Edit</button>
                               {course.status === 'Published' ? (
                                 <button onClick={(e) => handleAction(e, 'Unpublish', course)}><EyeOff size={14} /> Unpublish</button>

@@ -30,8 +30,6 @@
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-muted);
-  /* margin-left: 10px; */
-  margin-right: 321px;
 }
 
 .back-btn:hover {

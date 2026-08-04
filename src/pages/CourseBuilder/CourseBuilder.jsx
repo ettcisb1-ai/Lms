@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Plus, GripVertical, Video, Search, Trash2, Edit2, PlayCircle, X, Save, UploadCloud, Film, Loader } from 'lucide-react';
 import './CourseBuilder.css';
-import { COURSE_ENDPOINTS, VIDEO_ENDPOINTS, UPLOAD_ENDPOINT, CATEGORY_ENDPOINTS, formatStoredDuration } from '../../utils/api';
+import { COURSE_ENDPOINTS, VIDEO_ENDPOINTS, UPLOAD_ENDPOINT, CATEGORY_ENDPOINTS, fetchSecureStreamUrl, formatStoredDuration } from '../../utils/api';
 
 const CourseBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const playerRef = useRef(null);
   const [activeTab, setActiveTab] = useState('curriculum');
   const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
@@ -28,6 +29,68 @@ const CourseBuilder = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // ── Video Player State ──────────────────────────────────────────────────────
+  const [activePlayingVideo, setActivePlayingVideo] = useState(null);
+  const [streamUrl, setStreamUrl] = useState('');
+  const [isStreamLoading, setIsStreamLoading] = useState(false);
+
+  const playVideo = async (lecture, moduleTitle = '') => {
+    let vidId = null;
+    let fallbackUrl = lecture.url || '';
+    let vidTitle = lecture.title || 'Video Lecture';
+    let vidDuration = lecture.duration || '0:00';
+
+    if (lecture.video) {
+      if (typeof lecture.video === 'object' && lecture.video !== null) {
+        vidId = lecture.video._id ? lecture.video._id.toString() : null;
+        fallbackUrl = lecture.video.videoUrl || fallbackUrl;
+        vidTitle = lecture.video.title || vidTitle;
+        vidDuration = lecture.video.duration || vidDuration;
+      } else if (typeof lecture.video === 'string') {
+        vidId = lecture.video;
+        const foundInLib = videoLibrary.find(v => v._id === vidId || v.id === vidId);
+        if (foundInLib) {
+          fallbackUrl = foundInLib.videoUrl || fallbackUrl;
+          vidTitle = foundInLib.title || vidTitle;
+          vidDuration = foundInLib.duration || vidDuration;
+        }
+      }
+    }
+
+    setActivePlayingVideo({
+      id: vidId,
+      title: vidTitle,
+      duration: vidDuration,
+      moduleTitle
+    });
+
+    if (playerRef.current) {
+      playerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    setIsStreamLoading(true);
+    setStreamUrl('');
+
+    const token = localStorage.getItem('lms_token');
+    if (vidId) {
+      try {
+        const streamData = await fetchSecureStreamUrl(vidId, token);
+        if (streamData && streamData.streamUrl) {
+          setStreamUrl(streamData.streamUrl);
+          setIsStreamLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Stream token fetch error, fallback to direct url:', err);
+      }
+    }
+
+    setStreamUrl(fallbackUrl);
+    setIsStreamLoading(false);
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -71,6 +134,26 @@ const CourseBuilder = () => {
   useEffect(() => {
     fetchData();
   }, [id]);
+
+  useEffect(() => {
+    if (activePlayingVideo || isLoading) return;
+    const vList = [];
+    const keys = new Set();
+    (modules || []).forEach(m => {
+      (m.lectures || []).forEach(l => {
+        if (l.video || l.url) {
+          const key = (typeof l.video === 'object' ? l.video?._id : l.video) || l.url;
+          if (key && !keys.has(key)) {
+            keys.add(key);
+            vList.push({ lecture: l, moduleTitle: m.title });
+          }
+        }
+      });
+    });
+    if (vList.length > 0) {
+      playVideo(vList[0].lecture, vList[0].moduleTitle);
+    }
+  }, [modules, videoLibrary, isLoading]);
 
   const handleSaveCurriculum = async () => {
     setIsSaving(true);
@@ -340,6 +423,68 @@ const CourseBuilder = () => {
     v.title.toLowerCase().includes(modalSearchTerm.toLowerCase())
   );
 
+  // Derive all videos belonging to this course
+  const allCourseVideos = [];
+  const seenVideoKeys = new Set();
+
+  modules.forEach((mod) => {
+    (mod.lectures || []).forEach((lec, idx) => {
+      let vidId = null;
+      let vidUrl = lec.url || '';
+      let vidTitle = lec.title;
+      let vidDuration = lec.duration;
+
+      if (lec.video) {
+        if (typeof lec.video === 'object' && lec.video !== null) {
+          vidId = lec.video._id ? lec.video._id.toString() : null;
+          vidUrl = lec.video.videoUrl || vidUrl;
+          vidTitle = lec.video.title || vidTitle;
+          vidDuration = lec.video.duration || vidDuration;
+        } else if (typeof lec.video === 'string') {
+          vidId = lec.video;
+          const found = videoLibrary.find(v => v._id === vidId);
+          if (found) {
+            vidUrl = found.videoUrl || vidUrl;
+            vidTitle = found.title || vidTitle;
+            vidDuration = found.duration || vidDuration;
+          }
+        }
+      }
+
+      if (vidId || vidUrl) {
+        const key = vidId || vidUrl || `lec-${idx}`;
+        if (!seenVideoKeys.has(key)) {
+          seenVideoKeys.add(key);
+          allCourseVideos.push({
+            lecture: lec,
+            moduleTitle: mod.title,
+            vidId,
+            vidUrl,
+            vidTitle,
+            vidDuration
+          });
+        }
+      }
+    });
+  });
+
+  videoLibrary.forEach(v => {
+    const vCourseId = v.course?._id || v.course;
+    if (vCourseId === id || vCourseId?.toString() === id?.toString()) {
+      if (v._id && !seenVideoKeys.has(v._id.toString())) {
+        seenVideoKeys.add(v._id.toString());
+        allCourseVideos.push({
+          lecture: { title: v.title, duration: v.duration, video: v._id, url: v.videoUrl },
+          moduleTitle: 'Library Video',
+          vidId: v._id,
+          vidUrl: v.videoUrl,
+          vidTitle: v.title,
+          vidDuration: v.duration
+        });
+      }
+    }
+  });
+
   if (isLoading) {
     return <div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>Loading curriculum builder...</div>;
   }
@@ -352,14 +497,14 @@ const CourseBuilder = () => {
             <ChevronLeft size={20} />
           </button>
           <div>
-            <h2 className="page-title">Course Builder: {course?.title}</h2>
-            <p className="page-subtitle">Managing curriculum structure and lecture attachments</p>
+            <h2 className="page-title">Course Details: {course?.title}</h2>
+            <p className="page-subtitle">View video lectures and manage course curriculum structure</p>
           </div>
         </div>
         <div className="header-right-buttons" style={{ display: 'flex', gap: '12px' }}>
           <div className="header-tabs">
             <button className={`tab-btn ${activeTab === 'curriculum' ? 'active' : ''}`} onClick={() => setActiveTab('curriculum')}>
-              <Video size={16} /> Curriculum
+              <Video size={16} /> Curriculum & Videos
             </button>
           </div>
           <button className="btn-secondary" onClick={handleOpenUploadModal}>
@@ -371,6 +516,106 @@ const CourseBuilder = () => {
             <span>{isSaving ? 'Saving...' : 'Save Curriculum'}</span>
           </button>
         </div>
+      </div>
+
+      {/* ── Video Player & Details Section ── */}
+      <div ref={playerRef} className="course-video-showcase" style={{ background: '#0f172a', borderRadius: '16px', padding: '24px', color: 'white', marginBottom: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Film size={22} style={{ color: '#38bdf8' }} />
+              Course Video Player
+            </h3>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+              Watch and preview video lectures for {course?.title || 'this course'}
+            </p>
+          </div>
+          {allCourseVideos.length > 0 && (
+            <span style={{ fontSize: '12px', fontWeight: 600, background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '20px', border: '1px solid #334155' }}>
+              {allCourseVideos.length} Video{allCourseVideos.length === 1 ? '' : 's'} Available
+            </span>
+          )}
+        </div>
+
+        {/* Video Player Display */}
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', maxHeight: '480px', background: '#000000', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #1e293b' }}>
+          {isStreamLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
+              <Loader size={36} className="spin-icon" style={{ color: '#38bdf8' }} />
+              <span>Loading video stream...</span>
+            </div>
+          ) : streamUrl ? (
+            <video
+              key={streamUrl}
+              src={streamUrl}
+              controls
+              autoPlay
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+              <Film size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+              <p style={{ margin: 0, fontSize: '15px', color: '#94a3b8' }}>
+                {allCourseVideos.length === 0 ? 'No video lectures added yet. Click "Upload Video" or "Assign Video" below to add content.' : 'Select a lecture below to play the video.'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Active Playing Video Title */}
+        {activePlayingVideo && (
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#f1f5f9', margin: 0 }}>
+                {activePlayingVideo.title}
+              </h4>
+              {activePlayingVideo.moduleTitle && (
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  Module: {activePlayingVideo.moduleTitle} • Duration: {formatStoredDuration(activePlayingVideo.duration)}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Playlist Chips */}
+        {allCourseVideos.length > 0 && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', marginBottom: '12px' }}>
+              Select Video to Play ({allCourseVideos.length})
+            </div>
+            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px' }}>
+              {allCourseVideos.map((item, index) => {
+                const isActive = activePlayingVideo && (activePlayingVideo.title === item.vidTitle || activePlayingVideo.id === item.vidId);
+                return (
+                  <button
+                    key={index}
+                    onClick={() => playVideo(item.lecture, item.moduleTitle)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      background: isActive ? '#0284c7' : '#1e293b',
+                      color: isActive ? '#ffffff' : '#cbd5e1',
+                      border: isActive ? '1px solid #38bdf8' : '1px solid #334155',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <PlayCircle size={15} style={{ color: isActive ? '#ffffff' : '#38bdf8' }} />
+                    <span>{item.vidTitle}</span>
+                    <span style={{ fontSize: '11px', opacity: 0.75 }}>({formatStoredDuration(item.vidDuration)})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="builder-content">
@@ -411,10 +656,28 @@ const CourseBuilder = () => {
                           <PlayCircle size={16} className="lecture-icon" />
                           <span className="lecture-title">{lecture.title}</span>
                           <span className="lecture-duration">{formatStoredDuration(lecture.duration)}</span>
-                          {lecture.video ? (
-                            <span className="video-linked-tag" style={{ fontSize: '11px', color: '#10b981', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>Linked</span>
+                          {lecture.video || lecture.url ? (
+                            <button
+                              onClick={() => playVideo(lecture, mod.title)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 12px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                marginRight: '8px'
+                              }}
+                            >
+                              <PlayCircle size={14} /> Watch Video
+                            </button>
                           ) : (
-                            <span className="video-linked-tag" style={{ fontSize: '11px', color: '#ef4444', backgroundColor: '#fef2f2', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>Empty</span>
+                            <span className="video-linked-tag" style={{ fontSize: '11px', color: '#ef4444', backgroundColor: '#fef2f2', padding: '2px 8px', borderRadius: '10px', fontWeight: 600, marginRight: '8px' }}>No Video</span>
                           )}
                           <button
                             className="btn-text"
