@@ -77,6 +77,13 @@ const getLatestDevice = (activityLog) => {
   return ua;
 };
 
+const parseDeviceLimit = (val) => {
+  if (val !== undefined && val !== null && !isNaN(Number(val))) {
+    return Number(val);
+  }
+  return 2;
+};
+
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
@@ -155,7 +162,7 @@ const Users = () => {
           courses: u.courses || [],
           activityLog: u.activityLog || [],
           lastLogin: getRealLastLogin(u.activityLog),
-          deviceLimit: typeof u.deviceLimit === 'number' ? u.deviceLimit : 2,
+          deviceLimit: parseDeviceLimit(u.deviceLimit),
         }));
         setUsers(mappedUsers);
         setTotalPages(result.totalPages || 1);
@@ -448,7 +455,7 @@ const Users = () => {
   const openDeviceLimitModal = (e, user) => {
     e.stopPropagation();
     setDeviceLimitUser(user);
-    setDeviceLimitValue(typeof user.deviceLimit === 'number' ? user.deviceLimit : 2);
+    setDeviceLimitValue(parseDeviceLimit(user.deviceLimit));
     setActiveDropdown(null);
   };
 
