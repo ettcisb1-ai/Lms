@@ -525,20 +525,20 @@ const Users = () => {
       } else if (action === 'Assign Course') {
         openAccessPanel(e, user);
       } else if (action === 'Device Reset') {
-        if (!window.confirm(`Reset device access for ${user.name}? This will set allowed devices to 0.`)) return;
+        if (!window.confirm(`Reset device access for ${user.name}? This will reset allowed devices to default (2).`)) return;
         const response = await fetch(ADMIN_ENDPOINTS.USER_DEVICE_LIMIT(user.id), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ deviceLimit: 0 })
+          body: JSON.stringify({ deviceLimit: 2, clearSessions: true })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Failed to reset device limit.');
         if (result.success) {
           await refreshUsers();
-          alert(`Allowed devices for ${user.name} set to 0.`);
+          alert(`Allowed devices for ${user.name} reset to default (2).`);
         }
       } else if (action === 'Force Logout') {
         if (!window.confirm(`Force logout all sessions for ${user.name}?`)) return;
