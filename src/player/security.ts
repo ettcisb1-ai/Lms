@@ -116,7 +116,14 @@ export const attachTabVisibility = (opts: TabVisibilityOptions): CleanupFn => {
 export const attachDevToolsDetection = (onDetected: () => void, onClosed: () => void): CleanupFn => {
   let devOpen = false;
 
+  const isMobile = () =>
+    window.innerWidth < 768 || /iPhone|Android.*Mobile|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
   const check = () => {
+    if (isMobile()) {
+      if (devOpen) { devOpen = false; onClosed(); }
+      return;
+    }
     const threshold = 160; // ms — normal JS loops complete in <1ms
     const start = performance.now();
     // eslint-disable-next-line no-debugger
@@ -130,6 +137,10 @@ export const attachDevToolsDetection = (onDetected: () => void, onClosed: () => 
 
   // Resize-based detection (DevTools panel changes window size)
   const onResize = () => {
+    if (isMobile()) {
+      if (devOpen) { devOpen = false; onClosed(); }
+      return;
+    }
     const widthDiff  = window.outerWidth  - window.innerWidth;
     const heightDiff = window.outerHeight - window.innerHeight;
     const detected = widthDiff > 160 || heightDiff > 160;

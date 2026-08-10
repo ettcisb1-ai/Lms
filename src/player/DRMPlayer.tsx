@@ -36,11 +36,12 @@ export interface DRMPlayerProps {
     drmToken?: string;
     onEnded?: () => void;
     onDuration?: (secs: number) => void;
-    watermark: {
+    watermark?: {
         userName: string;
         userEmail: string;
         courseName: string;
     };
+    showWatermark?: boolean;
     forcePause?: boolean;
     className?: string;
 }
@@ -56,6 +57,7 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
     onEnded,
     onDuration,
     watermark,
+    showWatermark = false,
     forcePause,
     className = '',
 }) => {
@@ -255,6 +257,11 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
     const baselineH = window.outerHeight - window.innerHeight;
 
     const detectDevTools = (): boolean => {
+      // Exclude mobile screens (< 768px or mobile user agent)
+      // DevTools detection is active only on laptop and tablet screens
+      const isMobile = window.innerWidth < 768 || /iPhone|Android.*Mobile|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) return false;
+
       const wGap = (window.outerWidth  - window.innerWidth)  - baselineW;
       const hGap = (window.outerHeight - window.innerHeight) - baselineH;
       // DevTools panel is typically 200-600px — anything >100px above baseline
@@ -480,7 +487,7 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
             />
 
             {/* Watermark */}
-            {!playerError && (
+            {!playerError && showWatermark && watermark && (
                 <Watermark
                     userName={watermark.userName}
                     userEmail={watermark.userEmail}
