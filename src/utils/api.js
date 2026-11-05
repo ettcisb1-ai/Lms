@@ -7,6 +7,7 @@ export const API_BASE_URL = 'https://ivory-turtle-508725.hostingersite.com';
 // Run on Vercel:
 // export const API_BASE_URL = 'https://backend-gules-one-88.vercel.app';
 // export const API_BASE_URL = 'https://backend-jyiwolngi-ettc.vercel.app';
+//update security
 
 export const BASE_URL = API_BASE_URL;
 
