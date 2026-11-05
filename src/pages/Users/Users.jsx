@@ -3,7 +3,7 @@ import {
   Plus, Edit2, Trash2, Search, MoreVertical, X, Ban,
   CheckCircle, Key, Book, LogOut, ChevronLeft, ChevronRight,
   Activity, Clock, Eye, AlertTriangle, Shield, Lock, Unlock,
-  BookOpen, BookX, Loader, Smartphone, RotateCcw
+  BookOpen, BookX, Loader, Smartphone, RotateCcw, Calendar
 } from 'lucide-react';
 import UserDetailsPanel from '../../components/UserDetailsPanel/UserDetailsPanel';
 import { ADMIN_ENDPOINTS, COURSE_ENDPOINTS } from '../../utils/api';
@@ -77,6 +77,16 @@ const getLatestDevice = (activityLog) => {
   return ua;
 };
 
+const toDateInputValue = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const parseDeviceLimit = (val) => {
   if (val !== undefined && val !== null && !isNaN(Number(val))) {
     return Number(val);
@@ -122,7 +132,7 @@ const Users = () => {
 
   // Add / Edit modal
   const [userModal, setUserModal] = useState(null); // null | { mode: 'add'|'edit', data: {} }
-  const EMPTY_FORM = { name: '', email: '', phoneNumber: '', role: 'User', status: 'Active', subscription: 'Free', password: '', confirmPassword: '' };
+  const EMPTY_FORM = { name: '', email: '', phoneNumber: '', role: 'User', status: 'Active', subscription: 'Free', expiryDate: '', password: '', confirmPassword: '' };
 
   const fetchUsers = async (page = currentPage, search = searchTerm, status = statusFilter) => {
     setIsLoading(true);
@@ -151,7 +161,8 @@ const Users = () => {
             ? u.status.charAt(0).toUpperCase() + u.status.slice(1)
             : (u.isActive ? 'Active' : 'Inactive'),
           enrolled: u.courses ? u.courses.length : 0,
-          registeredDate: u.createdAt ? u.createdAt.split('T')[0] : '—',
+          registeredDate: u.purchaseDate || (u.createdAt ? u.createdAt.split('T')[0] : '—'),
+          expiryDate: u.expiryDate || '',
           subscription: u.subscribed ? 'Pro (Paid)' : 'Free',
           ip: u.registeredIp || '—',
           currentIp: u.ip || '—',
@@ -211,6 +222,7 @@ const Users = () => {
         phoneNumber: user.phoneNumber || '',
         status: user.status,
         subscription: user.subscription,
+        expiryDate: user.expiryDate ? toDateInputValue(user.expiryDate) : '',
         password: '',
         confirmPassword: '',
         id: user.id
@@ -313,6 +325,7 @@ const Users = () => {
           phoneNumber: data.phoneNumber.trim(),
           status: data.status,
           subscription: data.subscription,
+          expiryDate: data.expiryDate !== undefined ? data.expiryDate : undefined,
           password: data.password ? data.password : undefined,
         }),
       });
@@ -618,6 +631,7 @@ const Users = () => {
                 <tr>
                   <th>User</th>
                   <th>Status</th>
+                  <th>Expiry Date</th>
                   <th>Courses</th>
                   <th>Last Login</th>
                   <th>Actions</th>
@@ -641,6 +655,13 @@ const Users = () => {
                     {/* Status */}
                     <td>
                       <span className={`status-badge ${user.status.toLowerCase()}`}>{user.status}</span>
+                    </td>
+
+                    {/* Expiry Date */}
+                    <td>
+                      <span className="user-expiry-cell" style={{ fontSize: '13px', fontWeight: 500, color: user.expiryDate ? '#334155' : 'var(--text-muted)' }}>
+                        {user.expiryDate || '—'}
+                      </span>
                     </td>
 
                     {/* Courses */}
@@ -685,7 +706,7 @@ const Users = () => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="5" className="text-center" style={{ padding: '40px 0', color: 'var(--text-muted)' }}>
+                    <td colSpan="6" className="text-center" style={{ padding: '40px 0', color: 'var(--text-muted)' }}>
                       No users found.
                     </td>
                   </tr>
@@ -894,13 +915,23 @@ const Users = () => {
                     <option value="Inactive">Inactive</option>
                   </select>
                 </div>
-                <div className="uf-group uf-full">
+                <div className="uf-group">
                   <label className="uf-label">Subscription Plan</label>
                   <select className="uf-select" value={userModal.data.subscription} onChange={e => handleModalChange('subscription', e.target.value)} disabled={savingUser}>
                     <option value="Free">Free</option>
                     <option value="Pro (Paid)">Pro (Paid)</option>
                     <option value="Expired">Expired</option>
                   </select>
+                </div>
+                <div className="uf-group">
+                  <label className="uf-label">Access Expiry Date</label>
+                  <input
+                    className="uf-input"
+                    type="date"
+                    value={userModal.data.expiryDate || ''}
+                    onChange={e => handleModalChange('expiryDate', e.target.value)}
+                    disabled={savingUser}
+                  />
                 </div>
                 <div className="uf-divider uf-full"><span>{userModal.mode === 'add' ? 'Set Password' : 'Change Password'}</span></div>
                 <div className="uf-group">

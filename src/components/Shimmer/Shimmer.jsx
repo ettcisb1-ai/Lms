@@ -99,8 +99,8 @@ export const ShimmerUserDashboard = () => (
     </div>
 
     {/* 3 stat cards */}
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
-      {[1, 2, 3].map(i => <ShimmerStatCard key={i} />)}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
+      {[1, 2, 3, 4].map(i => <ShimmerStatCard key={i} />)}
     </div>
 
     {/* Course cards grid */}

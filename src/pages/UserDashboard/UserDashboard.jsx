@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Award, Play, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BookOpen, Clock, Award, Play, ChevronRight, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
 import './UserDashboard.css';
 import { API_BASE_URL, AUTH_ENDPOINTS, COURSE_ENDPOINTS, SUBSCRIPTION_ENDPOINTS } from '../../utils/api';
 import { ShimmerUserDashboard, ShimmerAdminCourses } from '../../components/Shimmer/Shimmer';
@@ -150,6 +150,29 @@ const UserDashboard = () => {
     ? [...enrollments].sort((a, b) => new Date(b.lastAccessed) - new Date(a.lastAccessed))[0]
     : null;
 
+  // Calculate expiration details
+  const getExpiryDetails = (expiryDateStr) => {
+    if (!expiryDateStr || expiryDateStr === 'Perpetual') {
+      return { text: 'Perpetual / Lifetime', daysLeft: null, isExpired: false, isUrgent: false };
+    }
+    const expiry = new Date(expiryDateStr);
+    if (isNaN(expiry.getTime())) {
+      return { text: expiryDateStr, daysLeft: null, isExpired: false, isUrgent: false };
+    }
+    expiry.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const diff = expiry.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return {
+      text: expiryDateStr,
+      daysLeft: days,
+      isExpired: days <= 0,
+      isUrgent: days > 0 && days <= 7,
+    };
+  };
+
+  const expiryInfo = getExpiryDetails(userProfile.expiryDate);
+
   const handleResumeCourse = (courseId) => {
     // Subscription gate: if paid mode is active and course is premium, require subscription
     const course = enrollments.find(c => c.id === courseId);
@@ -171,18 +194,55 @@ const UserDashboard = () => {
 
   return (
     <div className="user-dashboard-page">
+      {/* Expiration Notice Banner if urgent or expired */}
+      {expiryInfo.isExpired ? (
+        <div className="expiry-alert-banner banner-expired">
+          <AlertCircle size={20} />
+          <div className="alert-text">
+            <strong>Account Access Expired:</strong> Your account access expired on {userProfile.expiryDate}. Please contact your administrator to renew your access.
+          </div>
+        </div>
+      ) : expiryInfo.isUrgent ? (
+        <div className="expiry-alert-banner banner-warning">
+          <AlertCircle size={20} />
+          <div className="alert-text">
+            <strong>Access Expiring Soon:</strong> Your account access will expire in {expiryInfo.daysLeft} day{expiryInfo.daysLeft !== 1 ? 's' : ''} on {userProfile.expiryDate}. Please renew to prevent service interruption.
+          </div>
+        </div>
+      ) : null}
+
       {/* Welcome Banner */}
       <div className="welcome-banner">
         <div className="banner-text">
           <h2>Ready to level up, {userProfile.name || 'Student'}?</h2>
           <p>
-            You have completed <strong>{completedLectures}</strong> out of <strong>{totalLectures}</strong> courses.
-            Keep the learning alive!
+            {totalLectures === 0 ? (
+              'Welcome to your learning portal! Explore your courses and start learning today.'
+            ) : (
+              <>
+                You have completed <strong>{completedLectures}</strong> out of <strong>{totalLectures}</strong> lessons. Keep the learning alive!
+              </>
+            )}
           </p>
-          <button className="banner-cta-btn" onClick={() => navigate('/dashboard/courses')}>
-            <span>View My Courses</span>
-            <ChevronRight size={16} />
-          </button>
+
+          <div className="banner-actions-row">
+            <button className="banner-cta-btn" onClick={() => navigate('/dashboard/courses')}>
+              <span>View My Courses</span>
+              <ChevronRight size={16} />
+            </button>
+
+            {userProfile.expiryDate && (
+              <div className="banner-expiry-badge">
+                <Calendar size={14} />
+                <span>Access Valid Until: <strong>{userProfile.expiryDate}</strong></span>
+                {expiryInfo.daysLeft !== null && (
+                  <span className={`expiry-pill-chip ${expiryInfo.isExpired ? 'chip-expired' : expiryInfo.isUrgent ? 'chip-urgent' : 'chip-ok'}`}>
+                    {expiryInfo.isExpired ? 'Expired' : `${expiryInfo.daysLeft}d left`}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="banner-visual">
           <div className="glow-sphere"></div>
@@ -226,6 +286,24 @@ const UserDashboard = () => {
             <span className="stat-value">{completedCourses} / {totalCourses}</span>
             <span className="stat-label">Courses Completed</span>
             <span className="stat-sub-label">{totalCourses} course{totalCourses !== 1 ? 's' : ''} assigned</span>
+          </div>
+        </div>
+
+        {/* 4th Stat Card: Account Access Expiration */}
+        <div className={`student-stat-card card-expiry ${expiryInfo.isUrgent ? 'urgent' : ''} ${expiryInfo.isExpired ? 'expired' : ''}`}>
+          <div className={`card-top-icon ${expiryInfo.isExpired ? 'red-theme' : expiryInfo.isUrgent ? 'amber-theme' : 'emerald-theme'}`}>
+            <Calendar size={20} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{userProfile.expiryDate || 'N/A'}</span>
+            <span className="stat-label">Access Expiration Date</span>
+            <span className="stat-sub-label">
+              {expiryInfo.isExpired
+                ? 'Account access has expired'
+                : expiryInfo.daysLeft !== null
+                  ? `${expiryInfo.daysLeft} day${expiryInfo.daysLeft !== 1 ? 's' : ''} remaining`
+                  : 'Active Account Access'}
+            </span>
           </div>
         </div>
       </div>

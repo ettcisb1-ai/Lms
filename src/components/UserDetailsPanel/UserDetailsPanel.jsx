@@ -53,6 +53,10 @@ const UserDetailsPanel = ({ user, isOpen, onClose, onAction, availableCourses = 
                     <span className="detail-value">{user.registeredDate}</span>
                   </div>
                   <div className="detail-item">
+                    <span className="detail-label">Access Expiry Date</span>
+                    <span className="detail-value" style={{ fontWeight: 600 }}>{user.expiryDate || '—'}</span>
+                  </div>
+                  <div className="detail-item">
                     <span className="detail-label">Last Device/IP</span>
                     <span className="detail-value">{user.device}<br />{user.ip}</span>
                   </div>
