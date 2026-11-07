@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Video, Search, Filter, MoreVertical, Globe2, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, Video, Search, Filter, MoreVertical, Globe2, EyeOff, Users } from 'lucide-react';
 import CourseFormPanel from '../../components/CourseFormPanel/CourseFormPanel';
+import CourseStudentsModal from '../../components/CourseStudentsModal/CourseStudentsModal';
 import './Courses.css';
 import { COURSE_ENDPOINTS } from '../../utils/api';
 import { ShimmerAdminCourses } from '../../components/Shimmer/Shimmer';
@@ -24,6 +25,7 @@ const Courses = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
+  const [studentsModalCourse, setStudentsModalCourse] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -261,7 +263,18 @@ const Courses = () => {
                       <div className="content-stats">
                         <span>{course.videos} Lectures</span>
                         <span className="stat-dot">·</span>
-                        <span>{course.students} Students</span>
+                        <button
+                          type="button"
+                          className="course-students-clickable"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStudentsModalCourse(course);
+                          }}
+                          title="Click to view enrolled students"
+                        >
+                          <Users size={13} />
+                          <span>{course.students} Students</span>
+                        </button>
                       </div>
                     </td>
 
@@ -276,6 +289,9 @@ const Courses = () => {
                             <div className="dropdown-menu">
                               <button onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); navigate(`/admin/courses/${course.id}`); }}>
                                 <Video size={14} /> View Course Details & Videos
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); setStudentsModalCourse(course); }}>
+                                <Users size={14} /> View Enrolled Students ({course.students})
                               </button>
                               <button onClick={(e) => handleAction(e, 'Edit', course)}><Edit2 size={14} /> Edit</button>
                               {course.status === 'Published' ? (
@@ -305,6 +321,13 @@ const Courses = () => {
         onClose={closeForm}
         onSave={handleSave}
         isSaving={isSaving}
+      />
+
+      <CourseStudentsModal
+        course={studentsModalCourse}
+        isOpen={!!studentsModalCourse}
+        onClose={() => setStudentsModalCourse(null)}
+        onUpdate={fetchCourses}
       />
     </div>
   );

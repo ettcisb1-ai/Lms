@@ -50,6 +50,9 @@ export const COURSE_ENDPOINTS = {
   GET: (id) => `${API_BASE_URL}/api/courses/${id}`,
   ACCESS: (id) => `${API_BASE_URL}/api/courses/${id}/access`,
   REORDER: (id) => `${API_BASE_URL}/api/courses/${id}/reorder`,
+  STUDENTS: (id) => `${API_BASE_URL}/api/courses/${id}/students`,
+  ENROLL_STUDENT: (id) => `${API_BASE_URL}/api/courses/${id}/students/enroll`,
+  UNENROLL_STUDENT: (id, userId) => `${API_BASE_URL}/api/courses/${id}/students/${userId}`,
 };
 
 export const VIDEO_ENDPOINTS = {
@@ -71,7 +74,10 @@ export const UPLOAD_ENDPOINT = `${API_BASE_URL}/api/upload`;
 export const NOTIFICATION_ENDPOINTS = {
   MY: `${API_BASE_URL}/api/notifications/me`,
   MARK_READ: `${API_BASE_URL}/api/notifications/read`,
+  DELETE: (id) => `${API_BASE_URL}/api/notifications/${id}`,
+  CLEAR_ALL: `${API_BASE_URL}/api/notifications/clear-all`,
   ADMIN_LIST: (params) => `${API_BASE_URL}/api/notifications/admin?${params}`,
+  ADMIN_DELETE: (id) => `${API_BASE_URL}/api/notifications/admin/${id}`,
   BROADCAST: `${API_BASE_URL}/api/notifications/broadcast`,
   NEW_CONTENT: `${API_BASE_URL}/api/notifications/new-content`,
   EXPIRY_REMINDER: `${API_BASE_URL}/api/notifications/expiry-reminder`,

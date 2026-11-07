@@ -953,3 +953,26 @@
   white-space: nowrap;
 }
 
+
+
+/* Courses count badge in table */
+.user-courses-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-courses-badge:hover {
+  background-color: #fff1ee;
+  color: #ff4d2d;
+  border-color: #ffded6;
+}

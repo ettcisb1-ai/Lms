@@ -665,7 +665,20 @@ const Users = () => {
                     </td>
 
                     {/* Courses */}
-                    <td>{user.enrolled} Course{user.enrolled !== 1 ? 's' : ''}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAccessPanel(e, user);
+                        }}
+                        className="user-courses-badge"
+                        title="Click to view and manage assigned courses"
+                      >
+                        <BookOpen size={13} />
+                        <span>{user.enrolled} Course{user.enrolled !== 1 ? 's' : ''}</span>
+                      </button>
+                    </td>
 
                     {/* Last Login */}
                     <td className="last-login-cell">{user.lastLogin}</td>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { PendingTabContext } from '../../components/AdminLayout/AdminLayout';
-import { Send, Bell, Users, Clock, BookOpen, CreditCard, ToggleLeft, ToggleRight, Plus, X, Save, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { Send, Bell, Users, Clock, BookOpen, CreditCard, ToggleLeft, ToggleRight, Plus, X, Save, CheckCircle, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
 import './Notifications.css';
 import { COURSE_ENDPOINTS, NOTIFICATION_ENDPOINTS } from '../../utils/api';
 
@@ -172,7 +172,30 @@ const Notifications = () => {
     return `${Math.floor(hrs / 24)}d ago`;
   };
 
-  const typeLabel = { broadcast: '📢 Broadcast', new_content: '📚 New Content', subscription_expiry: '⏰ Expiry' };
+  const typeLabel = {
+    broadcast: '📢 Broadcast',
+    new_content: '📚 New Content',
+    subscription_expiry: '⏰ Expiry',
+    course_removed: '🚫 Access Removed',
+    course_access: '✅ Course Access'
+  };
+
+  const handleDeleteHistory = async (id) => {
+    if (!window.confirm('Delete this notification record from history?')) return;
+    try {
+      const res = await fetch(NOTIFICATION_ENDPOINTS.ADMIN_DELETE(id), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHistory((prev) => prev.filter((item) => item._id !== id));
+        setHistoryTotal((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Delete history item error:', err);
+    }
+  };
 
   return (
     <div className="notifications-page">
@@ -458,6 +481,27 @@ const Notifications = () => {
                         <span className={`notif-read-badge ${item.isRead ? 'read' : 'unread'}`}>
                           {item.isRead ? 'Read' : 'Unread'}
                         </span>
+                        <button
+                          onClick={() => handleDeleteHistory(item._id)}
+                          title="Delete from log"
+                          style={{
+                            background: 'none',
+                            border: '1px solid #fee2e2',
+                            color: '#ef4444',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            padding: '3px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            marginLeft: 'auto'
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </div>
                   ))

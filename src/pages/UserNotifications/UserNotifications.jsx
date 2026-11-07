@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, BellRing, Clock, Send, Eye, EyeOff, Trash2, CheckSquare, RefreshCw } from 'lucide-react';
+import { Bell, BellRing, Clock, Send, Eye, EyeOff, Trash2, CheckSquare, RefreshCw, AlertCircle } from 'lucide-react';
 import './UserNotifications.css';
 import { NOTIFICATION_ENDPOINTS } from '../../utils/api';
 import { ShimmerNotifications } from '../../components/Shimmer/Shimmer';
@@ -10,6 +10,8 @@ const typeToCategory = {
   new_content: 'content',
   subscription_expiry: 'account',
   broadcast: 'broadcast',
+  course_removed: 'account',
+  course_access: 'content',
 };
 
 const UserNotifications = () => {
@@ -30,6 +32,7 @@ const UserNotifications = () => {
           id: n._id,
           title: n.title,
           text: n.message,
+          type: n.type,
           category: typeToCategory[n.type] || 'broadcast',
           time: formatTime(n.createdAt),
           isRead: n.isRead,
@@ -93,10 +96,36 @@ const UserNotifications = () => {
     window.dispatchEvent(new Event('lms_notifications_read'));
   };
 
-  // Delete is local only (no delete endpoint needed — just hide from view)
-  const handleDelete = (id) => {
+  // Delete via Backend API (permanently deletes from database)
+  const handleDelete = async (id) => {
+    // Optimistic UI update
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     window.dispatchEvent(new Event('lms_notifications_read'));
+
+    try {
+      await fetch(NOTIFICATION_ENDPOINTS.DELETE(id), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+    } catch (err) {
+      console.error('Delete notification error:', err);
+    }
+  };
+
+  // Clear all notifications via Backend API
+  const handleClearAll = async () => {
+    if (!window.confirm('Are you sure you want to delete all notifications?')) return;
+    setNotifications([]);
+    window.dispatchEvent(new Event('lms_notifications_read'));
+
+    try {
+      await fetch(NOTIFICATION_ENDPOINTS.CLEAR_ALL, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+    } catch (err) {
+      console.error('Clear all notifications error:', err);
+    }
   };
 
   const filteredNotifications = notifications.filter((n) => {
@@ -104,7 +133,8 @@ const UserNotifications = () => {
     return n.category === activeFilter.toLowerCase();
   });
 
-  const getCategoryIcon = (cat) => {
+  const getCategoryIcon = (cat, type) => {
+    if (type === 'course_removed') return <AlertCircle size={16} style={{ color: '#ef4444' }} />;
     if (cat === 'content') return <BellRing size={16} className="text-orange" />;
     if (cat === 'account') return <Clock size={16} className="text-purple" />;
     return <Send size={16} className="text-blue" />;
@@ -118,7 +148,7 @@ const UserNotifications = () => {
           <p>Stay updated with class notifications and administrative broadcasts.</p>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button className="btn-mark-all" onClick={fetchNotifications} title="Refresh">
             <RefreshCw size={14} />
           </button>
@@ -126,6 +156,12 @@ const UserNotifications = () => {
             <button className="btn-mark-all" onClick={handleMarkAllAsRead}>
               <CheckSquare size={14} />
               <span>Mark all as read</span>
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button className="btn-mark-all" onClick={handleClearAll} style={{ color: '#ef4444' }} title="Clear all notifications">
+              <Trash2 size={14} />
+              <span>Clear all</span>
             </button>
           )}
         </div>
@@ -176,7 +212,7 @@ const UserNotifications = () => {
                 className={`notification-alert-row ${notif.isRead ? 'read-status' : 'unread-status'}`}
               >
                 <div className="notif-avatar-box">
-                  {getCategoryIcon(notif.category)}
+                  {getCategoryIcon(notif.category, notif.type)}
                 </div>
 
                 <div className="notif-body">
@@ -202,7 +238,7 @@ const UserNotifications = () => {
                   <button
                     className="action-icon-btn delete"
                     onClick={() => handleDelete(notif.id)}
-                    title="Dismiss"
+                    title="Delete Notification"
                   >
                     <Trash2 size={15} />
                   </button>

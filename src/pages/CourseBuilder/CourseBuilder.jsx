@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Plus, GripVertical, Video, Search, Trash2, Edit2, PlayCircle, X, Save, UploadCloud, Film, Loader } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ChevronLeft, Plus, GripVertical, Video, Search, Trash2, Edit2, PlayCircle, X, Save, UploadCloud, Film, Loader, Users, UserPlus, Phone, Mail, Calendar, CheckCircle2, Clock, BookOpen, AlertCircle } from 'lucide-react';
+import CourseStudentsModal from '../../components/CourseStudentsModal/CourseStudentsModal';
 import './CourseBuilder.css';
 import { COURSE_ENDPOINTS, VIDEO_ENDPOINTS, UPLOAD_ENDPOINT, CATEGORY_ENDPOINTS, fetchSecureStreamUrl, formatStoredDuration } from '../../utils/api';
 
@@ -8,7 +9,14 @@ const CourseBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const playerRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('curriculum');
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'students' ? 'students' : 'curriculum');
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
+  const [isStudentsLoading, setIsStudentsLoading] = useState(false);
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [studentStatusFilter, setStudentStatusFilter] = useState('all');
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
   const [videoLibrary, setVideoLibrary] = useState([]);
@@ -34,6 +42,42 @@ const CourseBuilder = () => {
   const [activePlayingVideo, setActivePlayingVideo] = useState(null);
   const [streamUrl, setStreamUrl] = useState('');
   const [isStreamLoading, setIsStreamLoading] = useState(false);
+
+
+  const fetchCourseStudents = async () => {
+    setIsStudentsLoading(true);
+    const token = localStorage.getItem('lms_token');
+    try {
+      const res = await fetch(COURSE_ENDPOINTS.STUDENTS(id), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (json.success) {
+        setEnrolledStudents(json.data.students || []);
+      }
+    } catch (err) {
+      console.error('Fetch course students error:', err);
+    } finally {
+      setIsStudentsLoading(false);
+    }
+  };
+
+  const handleUnenrollStudent = async (student) => {
+    if (!window.confirm(`Are you sure you want to remove ${student.name} from "${course?.title}"?`)) return;
+    const token = localStorage.getItem('lms_token');
+    try {
+      const res = await fetch(COURSE_ENDPOINTS.UNENROLL_STUDENT(id, student._id), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to remove student');
+      await fetchCourseStudents();
+      setCourse(prev => prev ? { ...prev, studentsCount: Math.max(0, (prev.studentsCount || 1) - 1) } : prev);
+    } catch (err) {
+      alert(err.message || 'Failed to remove student');
+    }
+  };
 
   const playVideo = async (lecture, moduleTitle = '') => {
     let vidId = null;
@@ -519,6 +563,7 @@ const CourseBuilder = () => {
       </div>
 
       {/* ── Video Player & Details Section ── */}
+      {activeTab === 'curriculum' && (
       <div ref={playerRef} className="course-video-showcase" style={{ background: '#0f172a', borderRadius: '16px', padding: '24px', color: 'white', marginBottom: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
@@ -617,8 +662,203 @@ const CourseBuilder = () => {
           </div>
         )}
       </div>
+      )}
 
       <div className="builder-content">
+
+        {activeTab === 'students' && (
+          <div className="cb-students-view">
+            {/* Stat Cards */}
+            <div className="cb-stats-row">
+              <div className="cb-stat-box">
+                <div className="cb-stat-icon" style={{ backgroundColor: '#fff1ee', color: '#ff4d2d' }}>
+                  <Users size={22} />
+                </div>
+                <div>
+                  <div className="cb-stat-val">{enrolledStudents.length}</div>
+                  <div className="cb-stat-lbl">Total Enrolled</div>
+                </div>
+              </div>
+              <div className="cb-stat-box">
+                <div className="cb-stat-icon" style={{ backgroundColor: '#ecfdf5', color: '#059669' }}>
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <div className="cb-stat-val">{enrolledStudents.filter(s => s.status === 'active' || s.isActive).length}</div>
+                  <div className="cb-stat-lbl">Active Students</div>
+                </div>
+              </div>
+              <div className="cb-stat-box">
+                <div className="cb-stat-icon" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
+                  <BookOpen size={22} />
+                </div>
+                <div>
+                  <div className="cb-stat-val">{enrolledStudents.filter(s => s.progress?.percentageComplete >= 100).length}</div>
+                  <div className="cb-stat-lbl">Completed Course</div>
+                </div>
+              </div>
+              <div className="cb-stat-box">
+                <div className="cb-stat-icon" style={{ backgroundColor: '#fef3c7', color: '#d97706' }}>
+                  <Clock size={22} />
+                </div>
+                <div>
+                  <div className="cb-stat-val">{enrolledStudents.filter(s => s.progress?.percentageComplete > 0 && s.progress?.percentageComplete < 100).length}</div>
+                  <div className="cb-stat-lbl">In Progress</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter toolbar */}
+            <div className="cb-students-toolbar">
+              <div className="search-box">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search students by name, email, or phone..."
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <select
+                  value={studentStatusFilter}
+                  onChange={(e) => setStudentStatusFilter(e.target.value)}
+                  className="cb-select"
+                >
+                  <option value="all">All Statuses ({enrolledStudents.length})</option>
+                  <option value="active">Active Accounts</option>
+                  <option value="inactive">Inactive Accounts</option>
+                  <option value="completed">Completed (100%)</option>
+                  <option value="in_progress">In Progress</option>
+                </select>
+                <button className="btn-primary" onClick={() => setIsEnrollModalOpen(true)}>
+                  <UserPlus size={16} />
+                  <span>+ Enroll Student</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Students Table */}
+            <div className="cb-table-card">
+              {isStudentsLoading ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+                  <Loader size={30} className="spin-icon" style={{ color: 'var(--primary-color)', marginBottom: '10px' }} />
+                  <div>Loading enrolled students...</div>
+                </div>
+              ) : enrolledStudents.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+                  <Users size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <h4>No Students Enrolled Yet</h4>
+                  <p style={{ margin: '6px 0 16px 0', fontSize: '13px' }}>Assign students to this course so they can start learning.</p>
+                  <button className="btn-primary" onClick={() => setIsEnrollModalOpen(true)} style={{ margin: '0 auto' }}>
+                    <UserPlus size={16} />
+                    <span>Enroll First Student</span>
+                  </button>
+                </div>
+              ) : (() => {
+                const filtered = enrolledStudents.filter(s => {
+                  const term = studentSearchTerm.toLowerCase();
+                  const match = (s.name || '').toLowerCase().includes(term) ||
+                    (s.email || '').toLowerCase().includes(term) ||
+                    (s.phoneNumber || '').toLowerCase().includes(term);
+                  if (!match) return false;
+                  if (studentStatusFilter === 'active') return s.status === 'active' || s.isActive;
+                  if (studentStatusFilter === 'inactive') return s.status === 'inactive' || !s.isActive;
+                  if (studentStatusFilter === 'completed') return s.progress?.percentageComplete >= 100;
+                  if (studentStatusFilter === 'in_progress') return s.progress?.percentageComplete > 0 && s.progress?.percentageComplete < 100;
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                      No students found matching your filters.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="table-responsive">
+                    <table className="cb-students-table">
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th>Contact</th>
+                          <th>Status</th>
+                          <th>Access Expiry</th>
+                          <th>Progress</th>
+                          <th className="text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map(student => {
+                          const pct = Math.min(100, Math.max(0, student.progress?.percentageComplete || 0));
+                          return (
+                            <tr key={student._id}>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div className="cb-avatar">
+                                    {(student.name || 'S').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{student.name}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{student.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: '12px', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {student.phoneNumber ? (
+                                    <><span><Phone size={12} /></span> {student.phoneNumber}</>
+                                  ) : '—'}
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`cb-status-badge ${student.status === 'inactive' || !student.isActive ? 'inactive' : 'active'}`}>
+                                  {student.status === 'inactive' || !student.isActive ? 'Inactive' : 'Active'}
+                                </span>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: '12px', fontWeight: 500, color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Calendar size={13} style={{ opacity: 0.6 }} />
+                                  <span>{student.expiryDate || 'No Expiry'}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ width: '150px' }}>
+                                  <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: pct >= 100 ? '#10b981' : '#ff4d2d', borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                                    <span style={{ fontWeight: 600 }}>{pct}%</span>
+                                    {student.progress?.totalVideos > 0 && (
+                                      <span style={{ color: 'var(--text-muted)' }}>{student.progress?.completedVideos || 0}/{student.progress.totalVideos} lessons</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="text-right">
+                                <button
+                                  className="cb-unenroll-btn"
+                                  onClick={() => handleUnenrollStudent(student)}
+                                  title="Remove access from this course"
+                                >
+                                  <Trash2 size={14} />
+                                  <span>Remove</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'curriculum' && (
           <div className="curriculum-tab">
             <div className="tab-toolbar">
@@ -799,6 +1039,17 @@ const CourseBuilder = () => {
           </div>
         );
       })()}
+
+      {/* Enroll Student Modal */}
+      <CourseStudentsModal
+        course={{ id, title: course?.title, students: enrolledStudents.length }}
+        isOpen={isEnrollModalOpen}
+        onClose={() => {
+          setIsEnrollModalOpen(false);
+          fetchCourseStudents();
+        }}
+        onUpdate={fetchCourseStudents}
+      />
 
       {/* Upload Video Modal */}
       {isUploadModalOpen && (

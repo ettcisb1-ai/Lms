@@ -219,6 +219,27 @@
   white-space: nowrap;
 }
 
+.course-students-clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #fff1ee;
+  color: #ff4d2d;
+  border: 1px solid #ffded6;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.course-students-clickable:hover {
+  background-color: #ff4d2d;
+  color: white;
+  border-color: #ff4d2d;
+}
+
 .stat-dot { color: #cbd5e1; }
 
 /* ── Difficulty badge ────────────────────────────────────────────────────── */
