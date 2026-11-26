@@ -19,7 +19,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
     Shield, Maximize, Play, Pause,
-    Volume2, VolumeX, RotateCcw, Loader, AlertTriangle,
+    Volume2, VolumeX, RotateCcw, FastForward, Loader, AlertTriangle,
 } from 'lucide-react';
 import Hls from 'hls.js';
 import shaka from 'shaka-player/dist/shaka-player.compiled';
@@ -77,6 +77,10 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
     const [playerError, setPlayerError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [seekFeedback, setSeekFeedback] = useState<{ seconds: number; key: number } | null>(null);
+
+    const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const seekFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [sessionId] = useState(
         () => `SID-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
@@ -215,6 +219,8 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
     // ── Destroy on unmount ────────────────────────────────────────────────────
     useEffect(() => {
         return () => {
+            if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+            if (seekFeedbackTimerRef.current) clearTimeout(seekFeedbackTimerRef.current);
             destroyHls();
             destroyShaka();
             clearVideoSrc();
@@ -409,6 +415,32 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
         else v.pause();
     };
 
+    const seekForward10 = () => {
+        const v = videoRef.current;
+        if (!v || isBlurred || isDevToolsOpen || isLoading || playerError) return;
+        const maxTime = isFinite(v.duration) && v.duration > 0 ? v.duration : v.currentTime + 10;
+        const nextTime = Math.min(v.currentTime + 10, maxTime);
+        v.currentTime = nextTime;
+        setCurrentTime(nextTime);
+
+        setSeekFeedback((prev) => ({ seconds: 10, key: (prev?.key ?? 0) + 1 }));
+        if (seekFeedbackTimerRef.current) clearTimeout(seekFeedbackTimerRef.current);
+        seekFeedbackTimerRef.current = setTimeout(() => setSeekFeedback(null), 650);
+    };
+
+    const handleVideoClick = () => {
+        if (clickTimerRef.current) {
+            clearTimeout(clickTimerRef.current);
+            clickTimerRef.current = null;
+            seekForward10();
+            return;
+        }
+        clickTimerRef.current = setTimeout(() => {
+            clickTimerRef.current = null;
+            togglePlay();
+        }, 250);
+    };
+
     const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
         const t = parseFloat(e.target.value);
         const v = videoRef.current;
@@ -454,7 +486,7 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
                 preload="auto"
                 controlsList="nodownload nofullscreen noremoteplayback"
                 disablePictureInPicture
-                onClick={togglePlay}
+                onClick={handleVideoClick}
                 onContextMenu={(e) => e.preventDefault()}
 
                 onPlay={() => setIsPlaying(true)}
@@ -494,6 +526,14 @@ const DRMPlayer: React.FC<DRMPlayerProps> = ({
                     courseName={watermark.courseName}
                     sessionId={sessionId}
                 />
+            )}
+
+            {/* Double-tap +10s fast-forward feedback */}
+            {seekFeedback && (
+                <div key={seekFeedback.key} className="drm-seek-feedback" aria-hidden="true">
+                    <FastForward size={22} />
+                    <span>+{seekFeedback.seconds}s</span>
+                </div>
             )}
 
             {/* Loading spinner */}

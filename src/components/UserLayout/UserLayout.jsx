@@ -1,14 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, NavLink, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, CreditCard, Settings, Bell,
-  ChevronLeft, ChevronRight, LogOut, ShieldAlert, Menu, X
+  LogOut, ShieldAlert, Menu, X
 } from 'lucide-react';
 import './UserLayout.css';
 import { NOTIFICATION_ENDPOINTS, AUTH_ENDPOINTS } from '../../utils/api';
 import { initScreenshotDetection } from '../../utils/screenshotDetector';
 
 const getToken = () => localStorage.getItem('lms_token');
+
+const readStoredProfile = () => {
+  const saved = localStorage.getItem('lms_user_profile');
+  if (!saved) {
+    return { profile: { name: 'Student', email: '' }, ipWarning: false };
+  }
+  try {
+    const parsed = JSON.parse(saved);
+    return {
+      profile: parsed,
+      ipWarning: Boolean(parsed.ipLockEnabled && parsed.ip !== parsed.registeredIp),
+    };
+  } catch {
+    return { profile: { name: 'Student', email: '' }, ipWarning: false };
+  }
+};
 
 const USER_NAV = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
@@ -21,69 +37,46 @@ const USER_NAV = [
 const UserLayout = () => {
   const token = localStorage.getItem('lms_token');
   const role = localStorage.getItem('lms_user_role');
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role !== 'user') {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
+  const isAuthorized = Boolean(token && role === 'user');
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(window.innerWidth <= 768);
-  const [userProfile, setUserProfile] = useState({ name: 'Student', email: '' });
+  const [userProfile, setUserProfile] = useState(() => readStoredProfile().profile);
   const [notificationsCount, setNotificationsCount] = useState(0);
-  const [ipWarning, setIpWarning] = useState(false);
+  const [ipWarning, setIpWarning] = useState(() => readStoredProfile().ipWarning);
   const navigate = useNavigate();
   const location = useLocation();
 
   // Anti-Screenshot & Screen Capture Protection (FR-30, FR-31)
   useEffect(() => {
+    if (!isAuthorized) return undefined;
     const cleanup = initScreenshotDetection();
     return cleanup;
-  }, []);
+  }, [isAuthorized]);
 
   // Fetch real unread count from API
   const fetchUnreadCount = useCallback(async () => {
-    const token = getToken();
-    if (!token) return;
+    const currentToken = getToken();
+    if (!currentToken || localStorage.getItem('lms_user_role') !== 'user') return;
     try {
       const res = await fetch(NOTIFICATION_ENDPOINTS.MY, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${currentToken}` },
       });
       const data = await res.json();
       if (data.success) {
         setNotificationsCount(data.data.unreadCount || 0);
       }
-    } catch (_) {
+    } catch {
       // silently fail — badge stays at 0
     }
   }, []);
 
   useEffect(() => {
-    // Read user details from localStorage
-    const saved = localStorage.getItem('lms_user_profile');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setUserProfile(parsed);
-      if (parsed.ipLockEnabled && parsed.ip !== parsed.registeredIp) {
-        setIpWarning(true);
-      } else {
-        setIpWarning(false);
-      }
-    }
+    if (!isAuthorized) return undefined;
 
     const handleProfileUpdate = () => {
-      const updated = localStorage.getItem('lms_user_profile');
-      if (updated) {
-        const parsed = JSON.parse(updated);
-        setUserProfile(parsed);
-        if (parsed.ipLockEnabled && parsed.ip !== parsed.registeredIp) {
-          setIpWarning(true);
-        } else {
-          setIpWarning(false);
-        }
-      }
+      const { profile, ipWarning: nextIpWarning } = readStoredProfile();
+      setUserProfile(profile);
+      setIpWarning(nextIpWarning);
     };
 
     window.addEventListener('storage', handleProfileUpdate);
@@ -93,26 +86,28 @@ const UserLayout = () => {
       window.removeEventListener('storage', handleProfileUpdate);
       window.removeEventListener('lms_profile_sync', handleProfileUpdate);
     };
-  }, [location.pathname]);
+  }, [isAuthorized, location.pathname]);
 
   // Fetch unread count on mount and when navigating away from notifications page
   useEffect(() => {
-    fetchUnreadCount();
-  }, [location.pathname, fetchUnreadCount]);
+    if (!isAuthorized) return;
+    Promise.resolve().then(fetchUnreadCount);
+  }, [isAuthorized, location.pathname, fetchUnreadCount]);
 
   // Listen for custom event fired by UserNotifications after marking as read
   useEffect(() => {
+    if (!isAuthorized) return undefined;
     const handler = () => fetchUnreadCount();
     window.addEventListener('lms_notifications_read', handler);
     return () => window.removeEventListener('lms_notifications_read', handler);
-  }, [fetchUnreadCount]);
+  }, [isAuthorized, fetchUnreadCount]);
 
   const checkSession = useCallback(async () => {
-    const token = localStorage.getItem('lms_token');
-    if (!token) return;
+    const currentToken = localStorage.getItem('lms_token');
+    if (!currentToken || localStorage.getItem('lms_user_role') !== 'user') return;
     try {
       const res = await fetch(AUTH_ENDPOINTS.PROFILE, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${currentToken}` },
       });
       if (res.status === 401) {
         localStorage.removeItem('lms_token');
@@ -120,38 +115,49 @@ const UserLayout = () => {
         localStorage.removeItem('lms_user_profile');
         navigate('/login');
       }
-    } catch (_) {
+    } catch {
       // network error — don't log out
     }
   }, [navigate]);
 
   // Trigger check immediately on every route transition
   useEffect(() => {
+    if (!isAuthorized) return;
     checkSession();
-  }, [location.pathname, checkSession]);
+  }, [isAuthorized, location.pathname, checkSession]);
 
   // Trigger check immediately when browser tab receives focus
   useEffect(() => {
+    if (!isAuthorized) return undefined;
     window.addEventListener('focus', checkSession);
     return () => window.removeEventListener('focus', checkSession);
-  }, [checkSession]);
+  }, [isAuthorized, checkSession]);
 
   // Check periodically (every 5 seconds) to catch forced logout immediately
   useEffect(() => {
+    if (!isAuthorized) return undefined;
     const interval = setInterval(checkSession, 5000);
     return () => clearInterval(interval);
-  }, [checkSession]);
+  }, [isAuthorized, checkSession]);
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role !== 'user') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      const token = localStorage.getItem('lms_token');
-      if (token) {
+      const currentToken = localStorage.getItem('lms_token');
+      if (currentToken) {
         try {
           await fetch(AUTH_ENDPOINTS.LOGOUT, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${currentToken}` }
           });
-        } catch (e) {
+        } catch {
           // ignore — still log out locally
         }
       }

@@ -1,8 +1,10 @@
 // Run on Local:
 // export const API_BASE_URL = 'http://localhost:3000';
 
-// Run on Production (Hostinger):
-export const API_BASE_URL = 'https://ivory-turtle-508725.hostingersite.com';
+// Run on Production (Hostinger) or configured environment:
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || 'https://ivory-turtle-508725.hostingersite.com'
+).replace(/\/+$/, '');
 
 // Run on Vercel:
 // export const API_BASE_URL = 'https://backend-gules-one-88.vercel.app';

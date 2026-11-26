@@ -6,19 +6,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import './AdminLayout.css';
 
 // Global tab state — pages read this on mount
+// eslint-disable-next-line react-refresh/only-export-components
 export const PendingTabContext = React.createContext({ tab: null, route: null });
 
 const AdminLayout = () => {
   const token = localStorage.getItem('lms_token');
   const role = localStorage.getItem('lms_user_role');
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [pendingTab, setPendingTab] = useState({ tab: null, route: null });
@@ -32,6 +25,14 @@ const AdminLayout = () => {
   const clearPendingTab = useCallback(() => {
     setPendingTab({ tab: null, route: null });
   }, []);
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <PendingTabContext.Provider value={{ ...pendingTab, clearPendingTab }}>
